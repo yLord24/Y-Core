@@ -6,21 +6,48 @@ const path = require("path");
 
 //--//Variables
 const argumentList = process.argv.slice(2);
-const rootIndex = argumentList.indexOf("--root");
-const gameIndex = argumentList.indexOf("--game");
-const entryIndex = argumentList.indexOf("--entry");
-const outputIndex = argumentList.indexOf("--out");
 const verbose = argumentList.includes("--verbose");
+const fullBuild = argumentList.includes("--full");
 
-const projectRoot = rootIndex >= 0 ? path.resolve(argumentList[rootIndex + 1]) : path.resolve(__dirname, "..");
-const selectedGameId = gameIndex >= 0 ? String(argumentList[gameIndex + 1]).toLowerCase() : "shinsei";
-const registryPath = "games/index.lua";
-const defaultEntryPath = `games/${selectedGameId}/init.lua`;
-const selectedEntryPath = entryIndex >= 0 ? normalizeModulePath(argumentList[entryIndex + 1]) : findGameEntryPath(selectedGameId) || defaultEntryPath;
-const outputPath = outputIndex >= 0 ? path.resolve(argumentList[outputIndex + 1]) : path.join(projectRoot, "builds", `${selectedGameId}.lua`);
+const projectRoot = path.resolve(readArgumentValue("--root", path.resolve(__dirname, "..")));
+const selectedGameId = String(readArgumentValue("--game", "shinsei")).toLowerCase();
+const selectedEntryPath = normalizeModulePath(readArgumentValue("--entry", findGameEntryPath(selectedGameId) || `games/${selectedGameId}/init.lua`));
+const outputPath = path.resolve(readArgumentValue("--out", path.join(projectRoot, "builds", `${selectedGameId}.lua`)));
+const publicBaseUrl = normalizeBaseUrl(readArgumentValue("--public-base-url", "https://raw.githubusercontent.com/yLord24/Y-Core/main/"));
+const requestedExternalPrefixList = readArgumentValues("--external-prefix").map(normalizeModulePrefix);
+const externalPrefixList = fullBuild ? [] : (requestedExternalPrefixList.length > 0 ? requestedExternalPrefixList : ["shared/"]);
+
 const sourceByModulePath = new Map();
+const externalModulePathSet = new Set();
+const ignoredGameFileSet = new Set([
+	`games/${selectedGameId}/loader.lua`,
+	`games/${selectedGameId}/test.lua`,
+]);
 
 //--//Source
+function readArgumentValue(argumentName, fallbackValue) {
+	const argumentIndex = argumentList.indexOf(argumentName);
+
+	if (argumentIndex < 0 || argumentIndex + 1 >= argumentList.length) {
+		return fallbackValue;
+	}
+
+	return argumentList[argumentIndex + 1];
+}
+
+function readArgumentValues(argumentName) {
+	const argumentValues = [];
+
+	for (let argumentIndex = 0; argumentIndex < argumentList.length; argumentIndex += 1) {
+		if (argumentList[argumentIndex] === argumentName && argumentIndex + 1 < argumentList.length) {
+			argumentValues.push(argumentList[argumentIndex + 1]);
+			argumentIndex += 1;
+		}
+	}
+
+	return argumentValues;
+}
+
 function log(message) {
 	if (verbose) {
 		console.log(`[YCore Builder] ${message}`);
@@ -38,6 +65,16 @@ function normalizeModulePath(modulePath) {
 		.replace(/^\/+/, "");
 }
 
+function normalizeModulePrefix(modulePrefix) {
+	const normalizedModulePrefix = normalizeModulePath(modulePrefix);
+	return normalizedModulePrefix.endsWith("/") ? normalizedModulePrefix : `${normalizedModulePrefix}/`;
+}
+
+function normalizeBaseUrl(baseUrl) {
+	const normalizedBaseUrl = String(baseUrl || "");
+	return normalizedBaseUrl.endsWith("/") ? normalizedBaseUrl : `${normalizedBaseUrl}/`;
+}
+
 function escapePattern(value) {
 	return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -45,9 +82,9 @@ function escapePattern(value) {
 function resolveModuleFile(modulePath) {
 	const normalizedModulePath = normalizeModulePath(modulePath);
 	const absolutePath = path.resolve(projectRoot, normalizedModulePath);
-	const normalizedRoot = path.resolve(projectRoot);
+	const relativePath = path.relative(projectRoot, absolutePath);
 
-	if (!absolutePath.startsWith(normalizedRoot)) {
+	if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
 		fail(`Invalid module path outside project: ${modulePath}`);
 	}
 
@@ -66,7 +103,14 @@ function readModule(modulePath) {
 }
 
 function findGameEntryPath(gameId) {
-	const registrySource = fs.existsSync(resolveModuleFile(registryPath)) ? readModule(registryPath) : "";
+	const registryPath = "games/index.lua";
+	const registryAbsolutePath = path.resolve(projectRoot, registryPath);
+
+	if (!fs.existsSync(registryAbsolutePath)) {
+		return null;
+	}
+
+	const registrySource = fs.readFileSync(registryAbsolutePath, "utf8");
 	const gameBlockPattern = new RegExp(`${escapePattern(gameId)}\\s*=\\s*\\{([\\s\\S]*?)\\n\\s*\\},`, "m");
 	const gameBlockMatch = registrySource.match(gameBlockPattern);
 
@@ -80,7 +124,7 @@ function findGameEntryPath(gameId) {
 
 function collectRequirePaths(source) {
 	const requirePaths = [];
-	const requirePattern = /Require\s*\(\s*["']([^"']+)["']/g;
+	const requirePattern = /(?:yrequire|Require)\s*\(\s*["']([^"']+)["']/g;
 	let requireMatch;
 
 	while ((requireMatch = requirePattern.exec(source)) !== null) {
@@ -114,10 +158,35 @@ function walkLuaFiles(folderPath) {
 	return luaFiles.sort();
 }
 
+function shouldExternalize(modulePath) {
+	const normalizedModulePath = normalizeModulePath(modulePath);
+	return externalPrefixList.some((externalPrefix) => normalizedModulePath.startsWith(externalPrefix));
+}
+
+function validateExternalModule(modulePath) {
+	const normalizedModulePath = normalizeModulePath(modulePath);
+
+	if (externalModulePathSet.has(normalizedModulePath)) {
+		return;
+	}
+
+	if (!fs.existsSync(resolveModuleFile(normalizedModulePath))) {
+		fail(`Missing external module: ${normalizedModulePath}`);
+	}
+
+	log(`external ${normalizedModulePath}`);
+	externalModulePathSet.add(normalizedModulePath);
+}
+
 function collectModule(modulePath) {
 	const normalizedModulePath = normalizeModulePath(modulePath);
 
 	if (sourceByModulePath.has(normalizedModulePath)) {
+		return;
+	}
+
+	if (shouldExternalize(normalizedModulePath)) {
+		validateExternalModule(normalizedModulePath);
 		return;
 	}
 
@@ -133,26 +202,14 @@ function collectModule(modulePath) {
 	}
 }
 
-function collectSharedModules() {
-	for (const sharedModulePath of walkLuaFiles("shared")) {
-		collectModule(sharedModulePath);
-	}
-}
-
 function collectGameModules(gameId) {
 	const gameRootPath = `games/${gameId}`;
-	const gameModulePaths = [
-		`${gameRootPath}/config.lua`,
-		`${gameRootPath}/init.lua`,
-		...walkLuaFiles(`${gameRootPath}/Features`),
-		...walkLuaFiles(`${gameRootPath}/Metadata`),
-		...walkLuaFiles(`${gameRootPath}/Utilities`),
-	];
+	const gameModulePaths = walkLuaFiles(gameRootPath).filter((gameModulePath) => {
+		return !ignoredGameFileSet.has(gameModulePath);
+	});
 
 	for (const gameModulePath of gameModulePaths) {
-		if (fs.existsSync(resolveModuleFile(gameModulePath))) {
-			collectModule(gameModulePath);
-		}
+		collectModule(gameModulePath);
 	}
 }
 
@@ -172,22 +229,34 @@ function createLuaTableEntry(modulePath, source) {
 
 function createBundleSource() {
 	const sortedModulePaths = Array.from(sourceByModulePath.keys()).sort();
+	const sortedExternalModulePaths = Array.from(externalModulePathSet.keys()).sort();
 	const bundledModules = sortedModulePaths.map((modulePath) => createLuaTableEntry(modulePath, sourceByModulePath.get(modulePath))).join("\n");
+	const externalPrefixes = externalPrefixList.map((modulePrefix) => `\t${JSON.stringify(modulePrefix)},`).join("\n");
 	const buildTime = new Date().toISOString();
 
-	return `--//Y Core Bundle
+	return `--//Y Core Game Bundle
 -- Generated by tools/build-game.js
 -- Game: ${selectedGameId}
 -- BuiltAt: ${buildTime}
 
 --//Variables
 local globalEnvironment = (getgenv and getgenv()) or _G
+local baseEnvironment = (getfenv and getfenv()) or _G
+local parentFramework = Framework or globalEnvironment.YCoreFramework
 local externalLoaderConfig = globalEnvironment.YCoreLoaderConfig or {}
 local loaderConfig = {}
-local baseEnvironment = (getfenv and getfenv()) or _G
 local bundledSources = {
 ${bundledModules}
 }
+local externalPrefixes = {
+${externalPrefixes}
+}
+
+if type(parentFramework) == "table" and type(parentFramework.Config) == "table" then
+\tfor configKey, configValue in pairs(parentFramework.Config) do
+\t\tloaderConfig[configKey] = configValue
+\tend
+end
 
 for configKey, configValue in pairs(externalLoaderConfig) do
 \tloaderConfig[configKey] = configValue
@@ -196,21 +265,33 @@ end
 loaderConfig.Game = "${selectedGameId}"
 loaderConfig.Bundled = true
 
-local Framework = {
+local Framework = parentFramework or {
 \tName = "Y Core",
 \tVersion = "0.1.0",
-\tBaseUrl = "bundle://",
+\tBaseUrl = loaderConfig.BaseUrl or "${publicBaseUrl}",
 \tCache = {},
 \tConfig = loaderConfig,
 \tStartedAt = os.clock(),
-\tBundled = true,
-\tBuild = {
-\t\tGame = "${selectedGameId}",
-\t\tEntry = ${JSON.stringify(selectedEntryPath)},
-\t\tBuiltAt = "${buildTime}",
-\t\tModules = ${sortedModulePaths.length},
-\t},
 }
+
+Framework.Name = Framework.Name or "Y Core"
+Framework.Version = tostring(Framework.Version or "0.1.0")
+Framework.BaseUrl = Framework.BaseUrl or loaderConfig.BaseUrl or "${publicBaseUrl}"
+Framework.Cache = Framework.Cache or {}
+Framework.Config = loaderConfig
+Framework.Bundled = true
+Framework.GameId = "${selectedGameId}"
+Framework.Build = {
+\tGame = "${selectedGameId}",
+\tEntry = ${JSON.stringify(selectedEntryPath)},
+\tBuiltAt = "${buildTime}",
+\tModules = ${sortedModulePaths.length},
+\tExternalModules = ${sortedExternalModulePaths.length},
+}
+
+if Framework.BaseUrl:sub(-1) ~= "/" then
+\tFramework.BaseUrl = Framework.BaseUrl .. "/"
+end
 
 globalEnvironment.YCoreFramework = Framework
 
@@ -227,7 +308,24 @@ local function fail(message)
 end
 
 local function normalizeModulePath(modulePath)
-\treturn tostring(modulePath):gsub("\\\\", "/"):gsub("^/+", "")
+\treturn tostring(modulePath or ""):gsub("\\\\", "/"):gsub("^/+", "")
+end
+
+local function cacheBust()
+\tif loaderConfig.CacheBust ~= nil then
+\t\treturn tostring(loaderConfig.CacheBust)
+\tend
+
+\treturn tostring(math.floor(os.clock() * 1000))
+end
+
+local function withCacheBust(url)
+\tif loaderConfig.NoCacheBust == true then
+\t\treturn url
+\tend
+
+\tlocal separator = string.find(url, "?", 1, true) and "&" or "?"
+\treturn url .. separator .. "v=" .. cacheBust()
 end
 
 local function loadLua(source, chunkName)
@@ -236,19 +334,70 @@ local function loadLua(source, chunkName)
 \treturn loadedChunk
 end
 
+local function isExternalModule(modulePath)
+\tmodulePath = normalizeModulePath(modulePath)
+
+\tfor _, externalPrefix in ipairs(externalPrefixes) do
+\t\tif modulePath:sub(1, #externalPrefix) == externalPrefix then
+\t\t\treturn true
+\t\tend
+\tend
+
+\treturn false
+end
+
+local function setChunkEnvironment(loadedChunk, moduleEnvironment)
+\tif setfenv then
+\t\tsetfenv(loadedChunk, moduleEnvironment)
+\tend
+
+\treturn loadedChunk
+end
+
 function Framework:Fetch(modulePath)
 \tmodulePath = normalizeModulePath(modulePath)
 
-\tlocal moduleSource = bundledSources[modulePath]
-\tif moduleSource == nil then
-\t\terror("missing bundled module: " .. tostring(modulePath))
+\tlocal bundledSource = bundledSources[modulePath]
+\tif bundledSource ~= nil then
+\t\tlog("bundle fetch " .. modulePath)
+\t\treturn bundledSource
 \tend
 
-\tlog("bundle fetch " .. modulePath)
-\treturn moduleSource
+\tif isExternalModule(modulePath) then
+\t\tlocal moduleUrl = withCacheBust((self.BaseUrl or "${publicBaseUrl}") .. modulePath)
+\t\tlog("external fetch " .. moduleUrl)
+\t\treturn game:HttpGet(moduleUrl)
+\tend
+
+\terror("missing bundled module: " .. tostring(modulePath))
 end
 
-function Framework:Require(modulePath, forceReload)
+function Framework:FetchUrl(url)
+\turl = withCacheBust(tostring(url))
+
+\tlog("fetch " .. url)
+\treturn game:HttpGet(url)
+end
+
+function Framework:LoadUrl(url, chunkName)
+\tlocal moduleSource = self:FetchUrl(url)
+\tlocal loadedChunk = loadLua(moduleSource, chunkName or ("@" .. tostring(url)))
+
+\tlocal moduleEnvironment = setmetatable({
+\t\tFramework = self,
+\t\tyrequire = function(childModulePath, childForceReload)
+\t\t\treturn self:yrequire(childModulePath, childForceReload)
+\t\tend,
+\t}, {
+\t\t__index = baseEnvironment,
+\t})
+
+\tmoduleEnvironment.Require = moduleEnvironment.yrequire
+
+\treturn setChunkEnvironment(loadedChunk, moduleEnvironment)()
+end
+
+function Framework:yrequire(modulePath, forceReload)
 \tmodulePath = normalizeModulePath(modulePath)
 \tif not forceReload and self.Cache[modulePath] ~= nil then
 \t\treturn self.Cache[modulePath]
@@ -259,18 +408,16 @@ function Framework:Require(modulePath, forceReload)
 
 \tlocal moduleEnvironment = setmetatable({
 \t\tFramework = self,
-\t\tRequire = function(childModulePath, childForceReload)
-\t\t\treturn self:Require(childModulePath, childForceReload)
+\t\tyrequire = function(childModulePath, childForceReload)
+\t\t\treturn self:yrequire(childModulePath, childForceReload)
 \t\tend,
 \t}, {
 \t\t__index = baseEnvironment,
 \t})
 
-\tif setfenv then
-\t\tsetfenv(loadedChunk, moduleEnvironment)
-\tend
+\tmoduleEnvironment.Require = moduleEnvironment.yrequire
 
-\tlocal moduleResult = loadedChunk()
+\tlocal moduleResult = setChunkEnvironment(loadedChunk, moduleEnvironment)()
 \tif moduleResult == nil then
 \t\tmoduleResult = true
 \tend
@@ -279,22 +426,12 @@ function Framework:Require(modulePath, forceReload)
 \treturn moduleResult
 end
 
-function Framework:Start()
-\t--> Load selected game
+Framework.Require = Framework.yrequire
+
+function Framework:StartBundledGame()
 \tlocal startSuccess, startResult = pcall(function()
-\t\tlocal gameRegistry = self:Require("${registryPath}", self.Config.ForceReload == true)
-\t\tlocal selectedGameInfo = gameRegistry.Games and gameRegistry.Games["${selectedGameId}"]
+\t\tlocal gameModule = self:yrequire(${JSON.stringify(selectedEntryPath)}, self.Config.ForceReload == true)
 
-\t\tif type(selectedGameInfo) ~= "table" then
-\t\t\terror("unknown bundled game: ${selectedGameId}")
-\t\tend
-
-\t\tself.GameId = "${selectedGameId}"
-\t\tself.Game = selectedGameInfo
-\t\tself.Name = selectedGameInfo.Name or self.Name
-\t\tself.Version = tostring(selectedGameInfo.Version or self.Version)
-
-\t\tlocal gameModule = self:Require(selectedGameInfo.Entry or "${selectedEntryPath}", self.Config.ForceReload == true)
 \t\tif type(gameModule) == "table" and type(gameModule.Start) == "function" then
 \t\t\treturn gameModule.Start(self)
 \t\tend
@@ -306,11 +443,11 @@ function Framework:Start()
 \t\treturn fail(startResult)
 \tend
 
-\tlog("started " .. tostring(self.Name) .. " " .. tostring(self.Version))
+\tlog("started bundled ${selectedGameId}")
 \treturn startResult
 end
 
-return Framework:Start()
+return Framework:StartBundledGame()
 `;
 }
 
@@ -323,12 +460,12 @@ function printSummary() {
 	console.log(`[YCore Builder] Game: ${selectedGameId}`);
 	console.log(`[YCore Builder] Entry: ${selectedEntryPath}`);
 	console.log(`[YCore Builder] Modules: ${sourceByModulePath.size}`);
+	console.log(`[YCore Builder] ExternalPrefixes: ${externalPrefixList.length > 0 ? externalPrefixList.join(", ") : "none"}`);
+	console.log(`[YCore Builder] ExternalModules: ${externalModulePathSet.size}`);
 	console.log(`[YCore Builder] Output: ${outputPath}`);
 }
 
 //--> Build
-collectModule(registryPath);
-collectSharedModules();
 collectGameModules(selectedGameId);
 collectModule(selectedEntryPath);
 writeOutput(createBundleSource());

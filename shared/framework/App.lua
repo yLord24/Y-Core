@@ -1,7 +1,7 @@
 --//Imports
-local Services = Require("shared/framework/Services.lua")
-local Maid = Require("shared/framework/Maid.lua")
-local Debug = Require("shared/framework/Debug.lua")
+local Services = yrequire("shared/framework/Services.lua")
+local Maid = yrequire("shared/framework/Maid.lua")
+local Debug = yrequire("shared/framework/Debug.lua")
 
 --//Variables
 local App = {}
@@ -23,7 +23,7 @@ function App:StartModules(moduleSpecs)
 	for _, moduleInfo in ipairs(moduleSpecs) do
 		local modulePath = moduleInfo.Path or moduleInfo[1]
 		local moduleName = moduleInfo.Name or moduleInfo[2] or modulePath
-		local requiredModule = Require(modulePath, moduleInfo.ForceReload == true)
+		local requiredModule = yrequire(modulePath, moduleInfo.ForceReload == true)
 		local moduleInstance = requiredModule
 
 		if type(requiredModule) == "table" and type(requiredModule.new) == "function" then

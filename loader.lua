@@ -1,11 +1,11 @@
 --//Y Core Loader
--- Local: getgenv().YCoreLoaderConfig = { BaseUrl = "http://127.0.0.1:8124/", Game = "shinsei" }
+-- Local dev: getgenv().YCoreLoaderConfig = { BaseUrl = "http://127.0.0.1:8124/", Game = "shinsei", SourceMode = true }
 
 --//Variables
 local globalEnvironment = (getgenv and getgenv()) or _G
 local loaderConfig = globalEnvironment.YCoreLoaderConfig or globalEnvironment.YAutoSignalLoaderConfig or {}
 local baseEnvironment = (getfenv and getfenv()) or _G
-local baseUrl = loaderConfig.BaseUrl or "http://127.0.0.1:8124/"
+local baseUrl = loaderConfig.BaseUrl or "https://raw.githubusercontent.com/yLord24/Y-Core/main/"
 local verbose = loaderConfig.Verbose == true
 
 if baseUrl:sub(-1) ~= "/" then
@@ -35,6 +35,10 @@ local function fail(message)
 	return nil
 end
 
+local function normalizeModulePath(modulePath)
+	return tostring(modulePath or ""):gsub("\\", "/"):gsub("^/+", "")
+end
+
 local function cacheBust()
 	if loaderConfig.CacheBust ~= nil then
 		return tostring(loaderConfig.CacheBust)
@@ -43,21 +47,64 @@ local function cacheBust()
 	return tostring(math.floor(os.clock() * 1000))
 end
 
+local function withCacheBust(url)
+	if loaderConfig.NoCacheBust == true then
+		return url
+	end
+
+	local separator = string.find(url, "?", 1, true) and "&" or "?"
+	return url .. separator .. "v=" .. cacheBust()
+end
+
 local function loadLua(source, chunkName)
 	local loadedChunk, errorMessage = loadstring(source, chunkName)
 	assert(loadedChunk, errorMessage)
 	return loadedChunk
 end
 
+local function setChunkEnvironment(loadedChunk, moduleEnvironment)
+	if setfenv then
+		setfenv(loadedChunk, moduleEnvironment)
+	end
+
+	return loadedChunk
+end
+
 function Framework:Fetch(modulePath)
-	modulePath = tostring(modulePath):gsub("^/", "")
-	local moduleUrl = self.BaseUrl .. modulePath .. "?v=" .. cacheBust()
+	modulePath = normalizeModulePath(modulePath)
+	local moduleUrl = withCacheBust(self.BaseUrl .. modulePath)
+
 	log("fetch " .. moduleUrl)
 	return game:HttpGet(moduleUrl)
 end
 
-function Framework:Require(modulePath, forceReload)
-	modulePath = tostring(modulePath):gsub("^/", "")
+function Framework:FetchUrl(url)
+	url = withCacheBust(tostring(url))
+
+	log("fetch " .. url)
+	return game:HttpGet(url)
+end
+
+function Framework:LoadUrl(url, chunkName)
+	local moduleSource = self:FetchUrl(url)
+	local loadedChunk = loadLua(moduleSource, chunkName or ("@" .. tostring(url)))
+
+	local moduleEnvironment = setmetatable({
+		Framework = self,
+		yrequire = function(childModulePath, childForceReload)
+			return self:yrequire(childModulePath, childForceReload)
+		end,
+	}, {
+		__index = baseEnvironment,
+	})
+
+	moduleEnvironment.Require = moduleEnvironment.yrequire
+
+	return setChunkEnvironment(loadedChunk, moduleEnvironment)()
+end
+
+function Framework:yrequire(modulePath, forceReload)
+	modulePath = normalizeModulePath(modulePath)
 	if not forceReload and self.Cache[modulePath] ~= nil then
 		return self.Cache[modulePath]
 	end
@@ -65,20 +112,18 @@ function Framework:Require(modulePath, forceReload)
 	local moduleSource = self:Fetch(modulePath)
 	local loadedChunk = loadLua(moduleSource, "@" .. modulePath)
 
-	local moduleEnv = setmetatable({
+	local moduleEnvironment = setmetatable({
 		Framework = self,
-		Require = function(childModulePath, childForceReload)
-			return self:Require(childModulePath, childForceReload)
+		yrequire = function(childModulePath, childForceReload)
+			return self:yrequire(childModulePath, childForceReload)
 		end,
 	}, {
 		__index = baseEnvironment,
 	})
 
-	if setfenv then
-		setfenv(loadedChunk, moduleEnv)
-	end
+	moduleEnvironment.Require = moduleEnvironment.yrequire
 
-	local moduleResult = loadedChunk()
+	local moduleResult = setChunkEnvironment(loadedChunk, moduleEnvironment)()
 	if moduleResult == nil then
 		moduleResult = true
 	end
@@ -87,12 +132,26 @@ function Framework:Require(modulePath, forceReload)
 	return moduleResult
 end
 
+Framework.Require = Framework.yrequire
+
 function Framework:Start()
 	--> Load selected game
 	local startSuccess, startResult = pcall(function()
-		local gameRegistry = self:Require("games/index.lua", self.Config.ForceReload == true)
-		local selectedGameId = tostring(self.Config.Game or gameRegistry.Default or "shinsei"):lower()
-		local gameInfo = gameRegistry.Games and gameRegistry.Games[selectedGameId]
+		local gameRegistry = self:yrequire("games/index.lua", self.Config.ForceReload == true)
+		local selectedGameId = self.Config.Game
+
+		if selectedGameId == nil and type(gameRegistry.FindByPlaceId) == "function" then
+			selectedGameId = gameRegistry.FindByPlaceId(game.PlaceId)
+		end
+
+		selectedGameId = tostring(selectedGameId or gameRegistry.Default or "shinsei"):lower()
+
+		local gameInfo = nil
+		if type(gameRegistry.GetGame) == "function" then
+			gameInfo = gameRegistry.GetGame(selectedGameId)
+		elseif type(gameRegistry.Games) == "table" then
+			gameInfo = gameRegistry.Games[selectedGameId]
+		end
 
 		if type(gameInfo) ~= "table" then
 			error("unknown game: " .. selectedGameId)
@@ -103,7 +162,10 @@ function Framework:Start()
 		self.Name = gameInfo.Name or self.Name
 		self.Version = tostring(gameInfo.Version or self.Version)
 
-		local gameModule = self:Require(gameInfo.Entry or ("games/" .. selectedGameId .. "/init.lua"), self.Config.ForceReload == true)
+		local sourceMode = self.Config.SourceMode == true
+		local gameModulePath = sourceMode and (gameInfo.Entry or ("games/" .. selectedGameId .. "/init.lua")) or (gameInfo.Loader or ("games/" .. selectedGameId .. "/loader.lua"))
+		local gameModule = self:yrequire(gameModulePath, self.Config.ForceReload == true)
+
 		if type(gameModule) == "table" and type(gameModule.Start) == "function" then
 			return gameModule.Start(self)
 		end

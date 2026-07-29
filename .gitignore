@@ -8,3 +8,8 @@ tmp/
 *.bak
 Thumbs.db
 .DS_Store
+
+# Private game sources stay local. Each game folder only publishes its public loader.
+/games/*/**
+!/games/*/
+!/games/*/loader.lua
