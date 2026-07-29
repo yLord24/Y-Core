@@ -10,7 +10,7 @@ local GameRegistry = {
 			Entry = "games/Shinsei/init.lua",
 			BundleUrl = "https://raw.githubusercontent.com/yLord24/Y-Core-Builds/main/Shinsei.luau",
 			Manifest = "games/Shinsei/Metadatas/Manifest.lua",
-			PlaceIds = {},
+			PlaceIds = { 136532079004320 },
 		},
 	},
 }
