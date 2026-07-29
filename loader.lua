@@ -163,8 +163,22 @@ function Framework:Start()
 		self.Version = tostring(gameInfo.Version or self.Version)
 
 		local sourceMode = self.Config.SourceMode == true
-		local gameModulePath = sourceMode and (gameInfo.Entry or ("games/" .. selectedGameId .. "/init.lua")) or (gameInfo.Loader or ("games/" .. selectedGameId .. "/loader.lua"))
-		local gameModule = self:yrequire(gameModulePath, self.Config.ForceReload == true)
+		local gameModule
+
+		if sourceMode then
+			local gameModulePath = gameInfo.Entry or ("games/" .. selectedGameId .. "/init.lua")
+			gameModule = self:yrequire(gameModulePath, self.Config.ForceReload == true)
+		else
+			local bundleUrl = gameInfo.BundleUrl or gameInfo.BuildUrl or gameInfo.LoaderUrl
+
+			if bundleUrl then
+				gameModule = self:LoadUrl(bundleUrl, "@" .. selectedGameId .. ".bundle")
+			elseif gameInfo.Loader then
+				gameModule = self:yrequire(gameInfo.Loader, self.Config.ForceReload == true)
+			else
+				error("missing bundle url for game: " .. selectedGameId)
+			end
+		end
 
 		if type(gameModule) == "table" and type(gameModule.Start) == "function" then
 			return gameModule.Start(self)

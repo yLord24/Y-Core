@@ -13,7 +13,7 @@ const stagedPathList = execFileSync("git", ["diff", "--cached", "--name-only", "
 
 const blockedPatternList = [
 	{
-		Test: (filePath) => /^games\/[^/]+\//.test(filePath) && !/^games\/[^/]+\/loader\.lua$/.test(filePath),
+		Test: (filePath) => /^games\/[^/]+\//.test(filePath),
 		Reason: "private game source",
 	},
 	{

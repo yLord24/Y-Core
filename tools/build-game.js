@@ -12,6 +12,7 @@ const fullBuild = argumentList.includes("--full");
 const projectRoot = path.resolve(readArgumentValue("--root", path.resolve(__dirname, "..")));
 const selectedGameId = String(readArgumentValue("--game", "shinsei")).toLowerCase();
 const selectedEntryPath = normalizeModulePath(readArgumentValue("--entry", findGameEntryPath(selectedGameId) || `games/${selectedGameId}/init.lua`));
+const selectedGameRootPath = normalizeModulePath(path.dirname(selectedEntryPath));
 const outputPath = path.resolve(readArgumentValue("--out", path.join(projectRoot, "builds", `${selectedGameId}.lua`)));
 const publicBaseUrl = normalizeBaseUrl(readArgumentValue("--public-base-url", "https://raw.githubusercontent.com/yLord24/Y-Core/main/"));
 const requestedExternalPrefixList = readArgumentValues("--external-prefix").map(normalizeModulePrefix);
@@ -20,8 +21,8 @@ const externalPrefixList = fullBuild ? [] : (requestedExternalPrefixList.length 
 const sourceByModulePath = new Map();
 const externalModulePathSet = new Set();
 const ignoredGameFileSet = new Set([
-	`games/${selectedGameId}/loader.lua`,
-	`games/${selectedGameId}/test.lua`,
+	`${selectedGameRootPath}/loader.lua`,
+	`${selectedGameRootPath}/test.lua`,
 ]);
 
 //--//Source
@@ -202,9 +203,8 @@ function collectModule(modulePath) {
 	}
 }
 
-function collectGameModules(gameId) {
-	const gameRootPath = `games/${gameId}`;
-	const gameModulePaths = walkLuaFiles(gameRootPath).filter((gameModulePath) => {
+function collectGameModules() {
+	const gameModulePaths = walkLuaFiles(selectedGameRootPath).filter((gameModulePath) => {
 		return !ignoredGameFileSet.has(gameModulePath);
 	});
 
@@ -466,7 +466,7 @@ function printSummary() {
 }
 
 //--> Build
-collectGameModules(selectedGameId);
+collectGameModules();
 collectModule(selectedEntryPath);
 writeOutput(createBundleSource());
 printSummary();

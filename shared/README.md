@@ -6,7 +6,7 @@ Current layout:
 
 ```text
 shared
-`-- framework
+`-- Framework
     |-- App.lua
     |-- Debug.lua
     |-- Maid.lua

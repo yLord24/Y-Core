@@ -1,7 +1,7 @@
 --//Imports
-local Services = yrequire("shared/framework/Services.lua")
-local Maid = yrequire("shared/framework/Maid.lua")
-local Debug = yrequire("shared/framework/Debug.lua")
+local Services = yrequire("shared/Framework/Services.lua")
+local Maid = yrequire("shared/Framework/Maid.lua")
+local Debug = yrequire("shared/Framework/Debug.lua")
 
 --//Variables
 local App = {}

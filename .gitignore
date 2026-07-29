@@ -9,7 +9,6 @@ tmp/
 Thumbs.db
 .DS_Store
 
-# Private game sources stay local. Each game folder only publishes its public loader.
+# Private game sources stay local. Public game bundle URLs live in games/index.lua.
 /games/*/**
 !/games/*/
-!/games/*/loader.lua

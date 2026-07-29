@@ -29,11 +29,11 @@ function discoverGames() {
       const gameRoot = path.join(gamesRoot, gameId);
       return {
         id: gameId,
-        loaderPath: path.join(gameRoot, "loader.lua"),
+        entryPath: path.join(gameRoot, "init.lua"),
         testPath: path.join(gameRoot, "test.lua"),
       };
     })
-    .filter((game) => fs.existsSync(game.loaderPath))
+    .filter((game) => fs.existsSync(game.entryPath))
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
@@ -83,12 +83,12 @@ server.listen(port, "127.0.0.1", () => {
 
   const games = discoverGames();
   if (games.length === 0) {
-    console.log("[YCore Local] No game loaders found under /games");
+    console.log("[YCore Local] No local game sources found under /games");
     return;
   }
 
   for (const game of games) {
-    console.log(`[YCore Local] ${game.id} Loader http://127.0.0.1:${port}/games/${game.id}/loader.lua`);
+    console.log(`[YCore Local] ${game.id} Source http://127.0.0.1:${port}/games/${game.id}/init.lua`);
     if (fs.existsSync(game.testPath)) {
       console.log(`[YCore Local] ${game.id} Test   http://127.0.0.1:${port}/games/${game.id}/test.lua`);
     }

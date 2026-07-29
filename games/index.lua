@@ -7,9 +7,9 @@ local GameRegistry = {
 		shinsei = {
 			Name = "Y Auto Signal",
 			Version = "0.1.0",
-			Entry = "games/shinsei/init.lua",
-			Loader = "games/shinsei/loader.lua",
-			Manifest = "games/shinsei/Metadatas/Manifest.lua",
+			Entry = "games/Shinsei/init.lua",
+			BundleUrl = "https://raw.githubusercontent.com/yLord24/Y-Core-Builds/main/Shinsei.luau",
+			Manifest = "games/Shinsei/Metadatas/Manifest.lua",
 			PlaceIds = {},
 		},
 	},
