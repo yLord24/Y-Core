@@ -1,0 +1,10 @@
+.env
+.env.*
+node_modules/
+builds/
+tmp/
+*.log
+*.tmp
+*.bak
+Thumbs.db
+.DS_Store
