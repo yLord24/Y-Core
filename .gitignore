@@ -15,4 +15,3 @@ Thumbs.db
 # Private game sources stay local by default. Public game bundle URLs live in games/index.lua.
 /games/*/**
 !/games/*/
-!/games/ShindoLife/**
