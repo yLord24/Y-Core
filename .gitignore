@@ -3,6 +3,9 @@
 node_modules/
 builds/
 tmp/
+.ycore-dev/
+tools/executor-agent.lua
+tools/YCoreDevServer.exe
 *.log
 *.tmp
 *.bak

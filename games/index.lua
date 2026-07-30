@@ -12,6 +12,14 @@ local GameRegistry = {
 			Manifest = "games/Shinsei/Metadatas/Manifest.lua",
 			PlaceIds = { 136532079004320 },
 		},
+		shindolife = {
+			Name = "Y Hub - Shindo Life",
+			Version = "0.1.0",
+			Entry = "games/ShindoLife/init.lua",
+			BundleUrl = "https://raw.githubusercontent.com/yLord24/Y-Core-Builds/main/ShindoLife.luau",
+			Manifest = "games/ShindoLife/Metadatas/Manifest.lua",
+			PlaceIds = { 4616652839 },
+		},
 	},
 }
 

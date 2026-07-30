@@ -6,10 +6,11 @@ $Root = Split-Path -Parent $PSScriptRoot
 Write-Host "Serving Y Core from $Root"
 Write-Host "Local server: http://127.0.0.1:$Port"
 Write-Host "Root loader:  http://127.0.0.1:$Port/loader.lua"
+Write-Host "Agent:        http://127.0.0.1:$Port/agent.lua"
 
 $node = Get-Command node -ErrorAction SilentlyContinue
 if ($node) {
-	& node "$PSScriptRoot\serve-local.js" --root "$Root" --port $Port
+	& node "$PSScriptRoot\dev-listener.js" --root "$Root" --port $Port
 	exit $LASTEXITCODE
 }
 
