@@ -12,6 +12,7 @@ tools/YCoreDevServer.exe
 Thumbs.db
 .DS_Store
 
-# Private game sources stay local. Public game bundle URLs live in games/index.lua.
+# Private game sources stay local by default. Public game bundle URLs live in games/index.lua.
 /games/*/**
 !/games/*/
+!/games/ShindoLife/**

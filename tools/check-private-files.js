@@ -11,9 +11,14 @@ const stagedPathList = execFileSync("git", ["diff", "--cached", "--name-only", "
 	.map((filePath) => filePath.trim().replace(/\\/g, "/"))
 	.filter(Boolean);
 
+const publicGameSourceList = [
+	"games/ShindoLife/",
+];
+
 const blockedPatternList = [
 	{
-		Test: (filePath) => /^games\/[^/]+\//.test(filePath),
+		Test: (filePath) => /^games\/[^/]+\//.test(filePath)
+			&& !publicGameSourceList.some((publicPrefix) => filePath.startsWith(publicPrefix)),
 		Reason: "private game source",
 	},
 	{
