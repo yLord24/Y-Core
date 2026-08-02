@@ -308,18 +308,6 @@ function createBundleSource() {
 --//Variables
 local globalEnvironment = (getgenv and getgenv()) or _G
 local baseEnvironment = (getfenv and getfenv()) or _G
-local function identity(callback)
-\treturn callback
-end
-
-globalEnvironment["LPH_NO_VIRTUALIZE"] = globalEnvironment["LPH_NO_VIRTUALIZE"] or identity
-globalEnvironment["LPH_JIT"] = globalEnvironment["LPH_JIT"] or identity
-globalEnvironment["LPH_JIT_MAX"] = globalEnvironment["LPH_JIT_MAX"] or identity
-globalEnvironment["LPH_NO_UPVALUES"] = globalEnvironment["LPH_NO_UPVALUES"] or identity
-baseEnvironment["LPH_NO_VIRTUALIZE"] = baseEnvironment["LPH_NO_VIRTUALIZE"] or globalEnvironment["LPH_NO_VIRTUALIZE"]
-baseEnvironment["LPH_JIT"] = baseEnvironment["LPH_JIT"] or globalEnvironment["LPH_JIT"]
-baseEnvironment["LPH_JIT_MAX"] = baseEnvironment["LPH_JIT_MAX"] or globalEnvironment["LPH_JIT_MAX"]
-baseEnvironment["LPH_NO_UPVALUES"] = baseEnvironment["LPH_NO_UPVALUES"] or globalEnvironment["LPH_NO_UPVALUES"]
 
 local parentFramework = Framework or globalEnvironment.YHubFramework or globalEnvironment.YCoreFramework
 local externalLoaderConfig = globalEnvironment.YHubLoaderConfig or globalEnvironment.YCoreLoaderConfig or {}
