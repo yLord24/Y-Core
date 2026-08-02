@@ -48,7 +48,7 @@ function Debug:Log(message, data)
 	local formattedLine = self:Line(message, data)
 
 	if debuggerConfig.Console then
-		print((debuggerConfig.Prefix or "[Y Core]") .. " " .. formattedLine)
+		print((debuggerConfig.Prefix or "[Y Hub]") .. " " .. formattedLine)
 	end
 
 	if not debuggerConfig.Enabled then
@@ -77,7 +77,7 @@ function Debug:Flush()
 
 	pcall(function()
 		if typeof(makefolder) == "function" then
-			local folderPath = debuggerConfig.Folder or "YCore"
+			local folderPath = debuggerConfig.Folder or "Y Hub"
 			local currentPath = ""
 
 			for folderName in tostring(folderPath):gmatch("[^/\\]+") do
@@ -86,7 +86,7 @@ function Debug:Flush()
 			end
 		end
 
-		writefile(debuggerConfig.File or "YCore/Framework.log", table.concat(self.Buffer, "\n"))
+		writefile(debuggerConfig.File or "Y Hub/Framework.log", table.concat(self.Buffer, "\n"))
 	end)
 end
 

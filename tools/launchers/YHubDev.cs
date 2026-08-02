@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
-internal static class YCoreDev
+internal static class YHubDev
 {
 	private static int Main(string[] args)
 	{
@@ -14,8 +14,8 @@ internal static class YCoreDev
 
 			if (!File.Exists(scriptPath))
 			{
-				Console.Error.WriteLine("[YCore Dev] Missing dev-listener.js next to this executable.");
-				Console.Error.WriteLine("[YCore Dev] Expected: " + scriptPath);
+				Console.Error.WriteLine("[Y Hub Dev] Missing dev-listener.js next to this executable.");
+				Console.Error.WriteLine("[Y Hub Dev] Expected: " + scriptPath);
 				return 1;
 			}
 
@@ -23,8 +23,8 @@ internal static class YCoreDev
 
 			if (nodePath == null)
 			{
-				Console.Error.WriteLine("[YCore Dev] Node.js was not found in PATH or Program Files.");
-				Console.Error.WriteLine("[YCore Dev] Install Node.js, then run this launcher again.");
+				Console.Error.WriteLine("[Y Hub Dev] Node.js was not found in PATH or Program Files.");
+				Console.Error.WriteLine("[Y Hub Dev] Install Node.js, then run this launcher again.");
 				return 1;
 			}
 
@@ -48,7 +48,7 @@ internal static class YCoreDev
 			{
 				if (process == null)
 				{
-					Console.Error.WriteLine("[YCore Dev] Could not start Node.js.");
+					Console.Error.WriteLine("[Y Hub Dev] Could not start Node.js.");
 					return 1;
 				}
 
@@ -58,7 +58,7 @@ internal static class YCoreDev
 		}
 		catch (Exception exception)
 		{
-			Console.Error.WriteLine("[YCore Dev] Launcher failed: " + exception);
+			Console.Error.WriteLine("[Y Hub Dev] Launcher failed: " + exception);
 			return 1;
 		}
 	}

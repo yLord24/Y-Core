@@ -1,4 +1,4 @@
-# Y Core
+# Y Hub
 
 Main framework and builder for Y Hub, Y Scripts, and supported Roblox projects.
 

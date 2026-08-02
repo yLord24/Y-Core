@@ -8,6 +8,22 @@ local App = {}
 App.__index = App
 
 --//Source
+local function reportAppError(framework, stage, errorObject, details)
+	if framework and type(framework.ReportError) == "function" then
+		return framework:ReportError(stage, errorObject, details)
+	end
+
+	local message = tostring(errorObject)
+	if type(debug) == "table" and type(debug.traceback) == "function" then
+		local success, trace = pcall(debug.traceback, message, 3)
+		if success and type(trace) == "string" then
+			return trace
+		end
+	end
+
+	return message
+end
+
 function App.new(framework, config)
 	return setmetatable({
 		Framework = framework,
@@ -33,8 +49,13 @@ function App:StartModules(moduleSpecs)
 		self.Modules[moduleName] = moduleInstance
 
 		if type(moduleInstance) == "table" and type(moduleInstance.Start) == "function" then
-			local startSuccess, startResult = pcall(function()
+			local startSuccess, startResult = xpcall(function()
 				return moduleInstance:Start()
+			end, function(errorObject)
+				return reportAppError(self.Framework, "app-module-start", errorObject, {
+					module = moduleName,
+					path = modulePath,
+				})
 			end)
 
 			if startSuccess then

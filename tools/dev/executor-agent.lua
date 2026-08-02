@@ -2,9 +2,9 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
 local Environment = (getgenv and getgenv()) or _G
-local BaseUrl = tostring(Environment.YCoreDevAgentUrl or Environment.PotassiumBridgeURL or "__YCORE_DEV_BASE_URL__")
-local PollInterval = tonumber(Environment.YCoreDevAgentPollInterval or 0.2) or 0.2
-local MaxLogLines = tonumber(Environment.YCoreDevAgentMaxLogs or 500) or 500
+local BaseUrl = tostring(Environment.YHubDevAgentUrl or Environment.YCoreDevAgentUrl or Environment.PotassiumBridgeURL or "__YCORE_DEV_BASE_URL__")
+local PollInterval = tonumber(Environment.YHubDevAgentPollInterval or Environment.YCoreDevAgentPollInterval or 0.2) or 0.2
+local MaxLogLines = tonumber(Environment.YHubDevAgentMaxLogs or Environment.YCoreDevAgentMaxLogs or 500) or 500
 
 local Request = (syn and syn.request)
 	or http_request
@@ -13,13 +13,14 @@ local Request = (syn and syn.request)
 	or (fluxus and fluxus.request)
 
 if not Request then
-	error("YCoreDevAgent: no executor HTTP request function found")
+	error("YHubDevAgent: no executor HTTP request function found")
 end
 
 if BaseUrl:sub(-1) == "/" then
 	BaseUrl = BaseUrl:sub(1, -2)
 end
 
+Environment.__YHubDevAgentRunning = false
 Environment.__YCoreDevAgentRunning = false
 task.wait(0.15)
 
@@ -27,6 +28,8 @@ local SessionId = tostring(math.floor(os.clock() * 1000)) .. "-" .. tostring(mat
 local Running = true
 local CurrentLogs = {}
 
+Environment.__YHubDevAgentRunning = true
+Environment.__YHubDevAgentSession = SessionId
 Environment.__YCoreDevAgentRunning = true
 Environment.__YCoreDevAgentSession = SessionId
 
@@ -84,11 +87,11 @@ local function pushLog(...)
 		table.remove(CurrentLogs, 1)
 	end
 
-	print("[YCoreDevAgent]", table.concat(parts, " "))
+	print("[Y Hub Agent]", table.concat(parts, " "))
 end
 
 local function shouldRun()
-	return Environment.__YCoreDevAgentRunning == true and Environment.__YCoreDevAgentSession == SessionId
+	return Environment.__YHubDevAgentRunning == true and Environment.__YHubDevAgentSession == SessionId
 end
 
 local function serializeResult(value)
@@ -118,7 +121,7 @@ local function runCommand(command)
 
 	pushLog("command-start", id, label)
 
-	local loadedChunk, loadError = loadstring(tostring(command.code or ""), "YCoreDevAgent:" .. id)
+	local loadedChunk, loadError = loadstring(tostring(command.code or ""), "YHubDevAgent:" .. id)
 	local success = false
 	local result = nil
 
@@ -150,12 +153,13 @@ local function runCommand(command)
 	end)
 
 	if not posted then
-		warn("[YCoreDevAgent] result post failed:", postResult)
+		warn("[Y Hub Agent] result post failed:", postResult)
 	end
 end
 
+Environment.YHubDevAgentLog = pushLog
 Environment.YCoreDevAgentLog = pushLog
-Environment.YCoreDevAgentRun = function(code)
+Environment.YHubDevAgentRun = function(code)
 	local loadedChunk, loadError = loadstring(tostring(code or ""))
 
 	if not loadedChunk then
@@ -164,14 +168,17 @@ Environment.YCoreDevAgentRun = function(code)
 
 	return pcall(loadedChunk)
 end
-Environment.YCoreDevAgentStop = function()
+Environment.YCoreDevAgentRun = Environment.YHubDevAgentRun
+Environment.YHubDevAgentStop = function()
+	Environment.__YHubDevAgentRunning = false
 	Environment.__YCoreDevAgentRunning = false
 end
+Environment.YCoreDevAgentStop = Environment.YHubDevAgentStop
 
 -- Compatibility with the older bridge helper names.
 Environment.BridgeLog = pushLog
-Environment.PotassiumBridgeRun = Environment.YCoreDevAgentRun
-Environment.PotassiumBridgeStop = Environment.YCoreDevAgentStop
+Environment.PotassiumBridgeRun = Environment.YHubDevAgentRun
+Environment.PotassiumBridgeStop = Environment.YHubDevAgentStop
 
 task.spawn(function()
 	pushLog("agent-online", Players.LocalPlayer and Players.LocalPlayer.Name or "unknown", "session", SessionId)
@@ -192,13 +199,13 @@ task.spawn(function()
 				task.wait(PollInterval)
 			end
 		else
-			warn("[YCoreDevAgent] poll failed", response and response.StatusCode or response)
+			warn("[Y Hub Agent] poll failed", response and response.StatusCode or response)
 			task.wait(1)
 		end
 	end
 
 	Running = false
-	print("[YCoreDevAgent] stopped")
+	print("[Y Hub Agent] stopped")
 end)
 
 return {
@@ -206,6 +213,7 @@ return {
 	session = SessionId,
 	url = BaseUrl,
 	stop = function()
+		Environment.__YHubDevAgentRunning = false
 		Environment.__YCoreDevAgentRunning = false
 		Running = false
 	end,

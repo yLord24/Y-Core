@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
-internal static class YCoreBuild
+internal static class YHubBuild
 {
 	private static int Main(string[] args)
 	{
@@ -14,8 +14,8 @@ internal static class YCoreBuild
 
 			if (!File.Exists(scriptPath))
 			{
-				Console.Error.WriteLine("[YCore Build] Missing build-game.js.");
-				Console.Error.WriteLine("[YCore Build] Expected: " + scriptPath);
+				Console.Error.WriteLine("[Y Hub Build] Missing build-game.js.");
+				Console.Error.WriteLine("[Y Hub Build] Expected: " + scriptPath);
 				Pause();
 				return 1;
 			}
@@ -24,7 +24,7 @@ internal static class YCoreBuild
 
 			if (nodePath == null)
 			{
-				Console.Error.WriteLine("[YCore Build] Node.js was not found in PATH or Program Files.");
+				Console.Error.WriteLine("[Y Hub Build] Node.js was not found in PATH or Program Files.");
 				Pause();
 				return 1;
 			}
@@ -33,7 +33,7 @@ internal static class YCoreBuild
 
 			if (string.IsNullOrWhiteSpace(gameId))
 			{
-				Console.Error.WriteLine("[YCore Build] No game selected.");
+				Console.Error.WriteLine("[Y Hub Build] No game selected.");
 				Pause();
 				return 1;
 			}
@@ -48,7 +48,7 @@ internal static class YCoreBuild
 				argumentText += " " + Quote(args[argumentIndex]);
 			}
 
-			Console.WriteLine("[YCore Build] Building " + gameId.Trim() + "...");
+			Console.WriteLine("[Y Hub Build] Building " + gameId.Trim() + "...");
 			Console.WriteLine("");
 
 			ProcessStartInfo startInfo = new ProcessStartInfo
@@ -64,21 +64,21 @@ internal static class YCoreBuild
 			{
 				if (process == null)
 				{
-					Console.Error.WriteLine("[YCore Build] Could not start Node.js.");
+					Console.Error.WriteLine("[Y Hub Build] Could not start Node.js.");
 					Pause();
 					return 1;
 				}
 
 				process.WaitForExit();
 				Console.WriteLine("");
-				Console.WriteLine(process.ExitCode == 0 ? "[YCore Build] Done." : "[YCore Build] Failed.");
+				Console.WriteLine(process.ExitCode == 0 ? "[Y Hub Build] Done." : "[Y Hub Build] Failed.");
 				Pause();
 				return process.ExitCode;
 			}
 		}
 		catch (Exception exception)
 		{
-			Console.Error.WriteLine("[YCore Build] Launcher failed: " + exception);
+			Console.Error.WriteLine("[Y Hub Build] Launcher failed: " + exception);
 			Pause();
 			return 1;
 		}
@@ -86,7 +86,7 @@ internal static class YCoreBuild
 
 	private static string AskGameId()
 	{
-		Console.WriteLine("Y Core Build");
+		Console.WriteLine("Y Hub Build");
 		Console.Write("Game id: ");
 		return Console.ReadLine() ?? "";
 	}

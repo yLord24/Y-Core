@@ -2,7 +2,7 @@
 local UILib = {}
 
 local DEFAULT_REPOSITORY = "https://raw.githubusercontent.com/yLord24/YLib/refs/heads/main/"
-local DEFAULT_CACHE_FOLDER = "YCore/UILibCache"
+local DEFAULT_CACHE_FOLDER = "Y Hub/UILibCache"
 
 --//Source
 local function getEnvironment()

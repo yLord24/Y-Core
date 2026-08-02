@@ -1,19 +1,35 @@
---//Y Core Loader
--- Local dev: getgenv().YCoreLoaderConfig = { BaseUrl = "http://127.0.0.1:8124/", Game = "shinsei", SourceMode = true }
+--//Y Hub Loader
+-- Local dev: getgenv().YHubLoaderConfig = { BaseUrl = "http://127.0.0.1:8124/", Game = "shinsei", SourceMode = true }
 
 --//Variables
 local globalEnvironment = (getgenv and getgenv()) or _G
-local loaderConfig = globalEnvironment.YCoreLoaderConfig or globalEnvironment.YAutoSignalLoaderConfig or {}
+local loaderConfig = globalEnvironment.YHubLoaderConfig
+	or globalEnvironment.YCoreLoaderConfig
+	or globalEnvironment.YAutoSignalLoaderConfig
+	or {}
 local baseEnvironment = (getfenv and getfenv()) or _G
 local baseUrl = loaderConfig.BaseUrl or "https://raw.githubusercontent.com/yLord24/Y-Core/main/"
 local verbose = loaderConfig.Verbose == true
+
+local function identity(callback)
+	return callback
+end
+
+globalEnvironment["LPH_NO_VIRTUALIZE"] = globalEnvironment["LPH_NO_VIRTUALIZE"] or identity
+globalEnvironment["LPH_JIT"] = globalEnvironment["LPH_JIT"] or identity
+globalEnvironment["LPH_JIT_MAX"] = globalEnvironment["LPH_JIT_MAX"] or identity
+globalEnvironment["LPH_NO_UPVALUES"] = globalEnvironment["LPH_NO_UPVALUES"] or identity
+baseEnvironment["LPH_NO_VIRTUALIZE"] = baseEnvironment["LPH_NO_VIRTUALIZE"] or globalEnvironment["LPH_NO_VIRTUALIZE"]
+baseEnvironment["LPH_JIT"] = baseEnvironment["LPH_JIT"] or globalEnvironment["LPH_JIT"]
+baseEnvironment["LPH_JIT_MAX"] = baseEnvironment["LPH_JIT_MAX"] or globalEnvironment["LPH_JIT_MAX"]
+baseEnvironment["LPH_NO_UPVALUES"] = baseEnvironment["LPH_NO_UPVALUES"] or globalEnvironment["LPH_NO_UPVALUES"]
 
 if baseUrl:sub(-1) ~= "/" then
 	baseUrl = baseUrl .. "/"
 end
 
 local Framework = {
-	Name = "Y Core",
+	Name = "Y Hub",
 	Version = "0.1.0",
 	BaseUrl = baseUrl,
 	Cache = {},
@@ -21,17 +37,18 @@ local Framework = {
 	StartedAt = os.clock(),
 }
 
+globalEnvironment.YHubFramework = Framework
 globalEnvironment.YCoreFramework = Framework
 
 --//Source
 local function log(message)
 	if verbose then
-		print("[Y Core] " .. tostring(message))
+		print("[Y Hub] " .. tostring(message))
 	end
 end
 
 local function fail(message)
-	warn("[Y Core] framework start failed: " .. tostring(message))
+	warn("[Y Hub] framework start failed: " .. tostring(message))
 	return nil
 end
 
@@ -85,9 +102,75 @@ function Framework:FetchUrl(url)
 	return game:HttpGet(url)
 end
 
+local function loadBootstrapModule(modulePath)
+	local moduleSource = Framework:Fetch(modulePath)
+	local loadedChunk = loadLua(moduleSource, "@" .. modulePath)
+	local moduleEnvironment = setmetatable({
+		Framework = Framework,
+		yrequire = function(childModulePath, childForceReload)
+			return Framework:yrequire(childModulePath, childForceReload)
+		end,
+	}, {
+		__index = baseEnvironment,
+	})
+
+	moduleEnvironment.Require = moduleEnvironment.yrequire
+	return setChunkEnvironment(loadedChunk, moduleEnvironment)()
+end
+
+do
+	local assertSuccess, assertModule = pcall(function()
+		return loadBootstrapModule("shared/Framework/Assert.lua")
+	end)
+
+	if assertSuccess and type(assertModule) == "table" and type(assertModule.Attach) == "function" then
+		assertModule.Attach(Framework)
+	else
+		warn("[Y Hub] Assert bootstrap failed: " .. tostring(assertModule))
+	end
+end
+
+if type(Framework.ReportError) ~= "function" then
+	function Framework:ReportError(stage, errorObject)
+		return tostring(errorObject)
+	end
+end
+if type(Framework.StartErrorWatcher) ~= "function" then
+	function Framework:StartErrorWatcher()
+		return false
+	end
+end
+
+local function runWithErrorReport(framework, stage, details, callback)
+	if framework and type(framework.RunWithErrorReport) == "function" then
+		return framework:RunWithErrorReport(stage, details, callback)
+	end
+
+	local success, result = xpcall(callback, function(errorObject)
+		return framework:ReportError(stage, errorObject, details)
+	end)
+
+	if not success then
+		error(result, 0)
+	end
+
+	return result
+end
+
 function Framework:LoadUrl(url, chunkName)
-	local moduleSource = self:FetchUrl(url)
-	local loadedChunk = loadLua(moduleSource, chunkName or ("@" .. tostring(url)))
+	local resolvedChunkName = chunkName or ("@" .. tostring(url))
+	local moduleSource = runWithErrorReport(self, "fetch-url", {
+		url = url,
+		chunk = resolvedChunkName,
+	}, function()
+		return self:FetchUrl(url)
+	end)
+	local loadedChunk = runWithErrorReport(self, "compile-url", {
+		url = url,
+		chunk = resolvedChunkName,
+	}, function()
+		return loadLua(moduleSource, resolvedChunkName)
+	end)
 
 	local moduleEnvironment = setmetatable({
 		Framework = self,
@@ -100,7 +183,12 @@ function Framework:LoadUrl(url, chunkName)
 
 	moduleEnvironment.Require = moduleEnvironment.yrequire
 
-	return setChunkEnvironment(loadedChunk, moduleEnvironment)()
+	return runWithErrorReport(self, "execute-url", {
+		url = url,
+		chunk = resolvedChunkName,
+	}, function()
+		return setChunkEnvironment(loadedChunk, moduleEnvironment)()
+	end)
 end
 
 function Framework:yrequire(modulePath, forceReload)
@@ -109,8 +197,16 @@ function Framework:yrequire(modulePath, forceReload)
 		return self.Cache[modulePath]
 	end
 
-	local moduleSource = self:Fetch(modulePath)
-	local loadedChunk = loadLua(moduleSource, "@" .. modulePath)
+	local moduleSource = runWithErrorReport(self, "fetch-module", {
+		module = modulePath,
+	}, function()
+		return self:Fetch(modulePath)
+	end)
+	local loadedChunk = runWithErrorReport(self, "compile-module", {
+		module = modulePath,
+	}, function()
+		return loadLua(moduleSource, "@" .. modulePath)
+	end)
 
 	local moduleEnvironment = setmetatable({
 		Framework = self,
@@ -123,7 +219,11 @@ function Framework:yrequire(modulePath, forceReload)
 
 	moduleEnvironment.Require = moduleEnvironment.yrequire
 
-	local moduleResult = setChunkEnvironment(loadedChunk, moduleEnvironment)()
+	local moduleResult = runWithErrorReport(self, "execute-module", {
+		module = modulePath,
+	}, function()
+		return setChunkEnvironment(loadedChunk, moduleEnvironment)()
+	end)
 	if moduleResult == nil then
 		moduleResult = true
 	end
@@ -133,10 +233,11 @@ function Framework:yrequire(modulePath, forceReload)
 end
 
 Framework.Require = Framework.yrequire
+Framework:StartErrorWatcher()
 
 function Framework:Start()
 	--> Load selected game
-	local startSuccess, startResult = pcall(function()
+	local startSuccess, startResult = xpcall(function()
 		local gameRegistry = self:yrequire("games/index.lua", self.Config.ForceReload == true)
 		local selectedGameId = self.Config.Game
 
@@ -185,6 +286,10 @@ function Framework:Start()
 		end
 
 		return gameModule
+	end, function(errorObject)
+		return self:ReportError("framework-start", errorObject, {
+			game = self.GameId or self.Config.Game or "auto",
+		})
 	end)
 
 	if not startSuccess then

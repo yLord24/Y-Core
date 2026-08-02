@@ -40,12 +40,12 @@ for (const stagedPath of stagedPathList) {
 }
 
 if (blockedPathList.length > 0) {
-	console.error("[YCore Guard] Refusing to commit private/local files:");
+	console.error("[Y Hub Guard] Refusing to commit private/local files:");
 	for (const blockedPath of blockedPathList) {
 		console.error(` - ${blockedPath}`);
 	}
-	console.error("[YCore Guard] Remove them from the index with git rm --cached <path>.");
+	console.error("[Y Hub Guard] Remove them from the index with git rm --cached <path>.");
 	process.exit(1);
 }
 
-console.log("[YCore Guard] OK");
+console.log("[Y Hub Guard] OK");

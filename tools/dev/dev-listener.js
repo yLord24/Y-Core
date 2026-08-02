@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-// Y Core dev listener.
+// Y Hub dev listener.
 // Serves local source files and hosts executor agents on the same localhost port.
 
 //--//Variables
@@ -260,7 +260,7 @@ function getHealth() {
 
 	return {
 		ok: true,
-		name: "Y Core Dev Listener",
+		name: "Y Hub Dev Listener",
 		port,
 		host,
 		root: projectRoot,
@@ -375,12 +375,12 @@ async function handleApi(req, res, route, parsedUrl) {
 }
 
 function printStartup() {
-	console.log(`[YCore Dev] Serving ${projectRoot}`);
-	console.log(`[YCore Dev] Loader http://${host}:${port}/loader.lua`);
-	console.log(`[YCore Dev] Agent  http://${host}:${port}/agent.lua`);
-	console.log(`[YCore Dev] Health http://${host}:${port}/health`);
+	console.log(`[Y Hub Dev] Serving ${projectRoot}`);
+	console.log(`[Y Hub Dev] Loader http://${host}:${port}/loader.lua`);
+	console.log(`[Y Hub Dev] Agent  http://${host}:${port}/agent.lua`);
+	console.log(`[Y Hub Dev] Health http://${host}:${port}/health`);
 	console.log("");
-	console.log("[YCore Dev] Executor agent:");
+	console.log("[Y Hub Dev] Executor agent:");
 	console.log(`loadstring(game:HttpGet("http://${host}:${port}/agent.lua"))()`);
 }
 
