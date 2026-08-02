@@ -2,14 +2,15 @@ using System;
 using System.Diagnostics;
 using System.IO;
 
-internal static class YCoreDevServer
+internal static class YCoreDev
 {
 	private static int Main(string[] args)
 	{
 		try
 		{
-			string toolDirectory = AppDomain.CurrentDomain.BaseDirectory;
-			string scriptPath = Path.Combine(toolDirectory, "dev-listener.js");
+			string toolsDirectory = AppDomain.CurrentDomain.BaseDirectory;
+			string projectRoot = Path.GetFullPath(Path.Combine(toolsDirectory, ".."));
+			string scriptPath = Path.Combine(toolsDirectory, "dev", "dev-listener.js");
 
 			if (!File.Exists(scriptPath))
 			{
@@ -23,11 +24,11 @@ internal static class YCoreDevServer
 			if (nodePath == null)
 			{
 				Console.Error.WriteLine("[YCore Dev] Node.js was not found in PATH or Program Files.");
-				Console.Error.WriteLine("[YCore Dev] Install Node.js or run tools/start-dev-listener.ps1.");
+				Console.Error.WriteLine("[YCore Dev] Install Node.js, then run this launcher again.");
 				return 1;
 			}
 
-			string argumentText = Quote(scriptPath);
+			string argumentText = Quote(scriptPath) + " --root " + Quote(projectRoot);
 
 			foreach (string argument in args)
 			{
@@ -38,7 +39,7 @@ internal static class YCoreDevServer
 			{
 				FileName = nodePath,
 				Arguments = argumentText,
-				WorkingDirectory = Path.GetFullPath(Path.Combine(toolDirectory, "..")),
+				WorkingDirectory = projectRoot,
 				UseShellExecute = false,
 				CreateNoWindow = false,
 			};

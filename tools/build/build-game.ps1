@@ -5,11 +5,14 @@ param(
 	[string]$PublicBaseUrl = "",
 	[string[]]$ExternalPrefix = @(),
 	[switch]$Full,
+	[switch]$Release,
+	[switch]$NativeModules,
+	[switch]$StringModules,
 	[switch]$Verbose
 )
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectRoot = if ($Root) { $Root } else { Resolve-Path (Join-Path $scriptRoot "..") }
+$projectRoot = if ($Root) { $Root } else { Resolve-Path (Join-Path $scriptRoot "..\..") }
 $builder = Join-Path $scriptRoot "build-game.js"
 $arguments = @($builder, "--root", $projectRoot, "--game", $Game)
 
@@ -29,6 +32,18 @@ foreach ($prefix in $ExternalPrefix) {
 
 if ($Full) {
 	$arguments += "--full"
+}
+
+if ($Release) {
+	$arguments += "--release"
+}
+
+if ($NativeModules) {
+	$arguments += "--native-modules"
+}
+
+if ($StringModules) {
+	$arguments += "--string-modules"
 }
 
 if ($Verbose) {

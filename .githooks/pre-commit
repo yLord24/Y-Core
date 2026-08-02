@@ -1,2 +1,2 @@
 #!/bin/sh
-node tools/check-private-files.js
+node tools/guards/check-private-files.js

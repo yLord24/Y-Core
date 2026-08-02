@@ -20,6 +20,14 @@ local GameRegistry = {
 			Manifest = "games/ShindoLife/Metadatas/Manifest.lua",
 			PlaceIds = { 4616652839 },
 		},
+		gakuran = {
+			Name = "Y Hub - Gakuran",
+			Version = "0.2.0",
+			Entry = "games/Gakuran/init.lua",
+			BundleUrl = "https://raw.githubusercontent.com/yLord24/Y-Core-Builds/main/Gakuran.luau",
+			Manifest = "games/Gakuran/Metadatas/Manifest.lua",
+			PlaceIds = { 128736949265057 },
+		},
 	},
 }
 

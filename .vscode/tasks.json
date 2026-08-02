@@ -4,13 +4,8 @@
 		{
 			"label": "Y Core: Build Game",
 			"type": "shell",
-			"command": "powershell",
+			"command": "${workspaceFolder}\\tools\\YCoreBuild.exe",
 			"args": [
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}\\tools\\build-game.ps1",
-				"-Game",
 				"${input:gameName}"
 			],
 			"group": {
@@ -25,13 +20,9 @@
 		{
 			"label": "Y Core: Serve Local",
 			"type": "shell",
-			"command": "powershell",
+			"command": "${workspaceFolder}\\tools\\YCoreDev.exe",
 			"args": [
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				"${workspaceFolder}\\tools\\serve-local.ps1",
-				"-Port",
+				"--port",
 				"8124"
 			],
 			"options": {
