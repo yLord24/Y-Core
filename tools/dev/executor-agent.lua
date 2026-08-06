@@ -129,7 +129,24 @@ local function runCommand(command)
 		result = "load-error: " .. tostring(loadError)
 		pushLog(result)
 	else
-		success, result = pcall(loadedChunk)
+		local finished = false
+		local commandThread = task.spawn(function()
+			success, result = pcall(loadedChunk)
+			finished = true
+		end)
+		local timeout = math.clamp(tonumber(command.timeout) or 120, 5, 600)
+
+		while not finished and shouldRun() and os.clock() - startedAt < timeout do
+			task.wait(0.05)
+		end
+
+		if not finished then
+			pcall(task.cancel, commandThread)
+			success = false
+			result = shouldRun()
+				and string.format("command-timeout after %.1fs", timeout)
+				or "command-cancelled: agent session replaced"
+		end
 
 		if not success then
 			pushLog("runtime-error", result)

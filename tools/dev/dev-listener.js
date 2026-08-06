@@ -133,6 +133,12 @@ function listFiles(directoryPath, suffix) {
 		.sort((left, right) => left.stat.birthtimeMs - right.stat.birthtimeMs || left.name.localeCompare(right.name));
 }
 
+function listPendingCommands() {
+	return listFiles(directoryMap.Commands, ".json").filter(
+		(commandFile) => !commandFile.name.endsWith(".running.json"),
+	);
+}
+
 function enqueueCommand(code, label) {
 	if (typeof code !== "string" || !code.trim()) {
 		throw new Error("Missing command code");
@@ -153,7 +159,7 @@ function enqueueCommand(code, label) {
 }
 
 function claimNextCommand(clientName) {
-	const commandFileList = listFiles(directoryMap.Commands, ".json");
+	const commandFileList = listPendingCommands();
 
 	for (const commandFile of commandFileList) {
 		let command;
@@ -266,7 +272,7 @@ function getHealth() {
 		root: projectRoot,
 		loader: `http://${host}:${port}/loader.lua`,
 		agent: `http://${host}:${port}/agent.lua`,
-		pending: listFiles(directoryMap.Commands, ".json").length,
+		pending: listPendingCommands().length,
 		running: listFiles(directoryMap.Commands, ".running.json").length,
 		active: activeCommandMap.size,
 		clients: Object.fromEntries(clientMap),
