@@ -35,6 +35,10 @@ const ignoredGameFileSet = new Set([
 	`${selectedGameRootPath}/loader.lua`,
 	`${selectedGameRootPath}/test.lua`,
 ]);
+const ignoredGameDirectorySet = new Set([
+	`${selectedGameRootPath}/Experiments`,
+	`${selectedGameRootPath}/Tests`,
+]);
 
 //--//Source
 function readArgumentValue(argumentName, fallbackValue) {
@@ -209,6 +213,10 @@ function walkLuaFiles(folderPath) {
 		const relativeChildPath = normalizeModulePath(path.relative(projectRoot, absoluteChildPath));
 
 		if (directoryEntry.isDirectory()) {
+			if (ignoredGameDirectorySet.has(relativeChildPath)) {
+				log(`ignore directory ${relativeChildPath}`);
+				continue;
+			}
 			luaFiles.push(...walkLuaFiles(relativeChildPath));
 		} else if (directoryEntry.isFile() && path.extname(directoryEntry.name).toLowerCase() === ".lua") {
 			luaFiles.push(relativeChildPath);
