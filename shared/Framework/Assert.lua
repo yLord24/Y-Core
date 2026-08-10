@@ -4,6 +4,14 @@ local REPORT_MARKER = "[YHubErrorReported]"
 local LEGACY_REPORT_MARKER = "[YCoreErrorReported]"
 local DEFAULT_ERROR_FOLDER = "Y Hub/Errors"
 local MAX_ERROR_LOG_BYTES = 768 * 1024
+local DEFAULT_LOGSERVICE_DEDUP_SECONDS = 120
+
+local EXTERNAL_LOG_NOISE_PATTERNS = {
+	"failed to load materialservice.",
+	"failed to load sound rbxassetid://",
+	"remote event invocation queue exhausted for replicatedstorage.remotes.server",
+	"user is not authorized to access asset",
+}
 
 --//Source
 function Assert.SafeString(value)
@@ -17,6 +25,17 @@ end
 function Assert.SafeFileName(value)
 	value = Assert.SafeString(value):gsub("[^%w_%-%.]+", "_")
 	return value ~= "" and value or "unknown"
+end
+
+function Assert.IsExternalLogNoise(message)
+	local lowerMessage = Assert.SafeString(message):lower()
+	for _, pattern in ipairs(EXTERNAL_LOG_NOISE_PATTERNS) do
+		if lowerMessage:find(pattern, 1, true) then
+			return true
+		end
+	end
+
+	return false
 end
 
 function Assert.EnsureFolderTree(folderPath)
@@ -223,10 +242,15 @@ function Assert.StartWatcher(framework)
 		then
 			return
 		end
+		if Assert.IsExternalLogNoise(text) then
+			return
+		end
 
 		local now = os.clock()
 		local cacheKey = messageTypeText .. "\n" .. text
-		if now - (framework.ErrorMessageCache[cacheKey] or 0) < tonumber(config.ErrorDedupSeconds or 8) then
+		local logServiceDedupSeconds = tonumber(config.LogServiceDedupSeconds)
+			or math.max(tonumber(config.ErrorDedupSeconds or 8) * 15, DEFAULT_LOGSERVICE_DEDUP_SECONDS)
+		if now - (framework.ErrorMessageCache[cacheKey] or 0) < logServiceDedupSeconds then
 			return
 		end
 		framework.ErrorMessageCache[cacheKey] = now
