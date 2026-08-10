@@ -22,7 +22,7 @@ local GameRegistry = {
 		},
 		gakuran = {
 			Name = "Y Hub - Gakuran",
-			Version = "0.3.0",
+			Version = "0.3.2",
 			Entry = "games/Gakuran/init.lua",
 			BundleUrl = "https://raw.githubusercontent.com/yLord24/Y-Core-Builds/main/Gakuran.luau",
 			Manifest = "games/Gakuran/Metadatas/Manifest.lua",
