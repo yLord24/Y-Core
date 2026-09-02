@@ -347,8 +347,28 @@ function createBundleSource() {
 --//Variables
 local globalEnvironment = (getgenv and getgenv()) or _G
 local baseEnvironment = (getfenv and getfenv()) or _G
+local function callable(callback)
+\tif type(callback) == "function" then
+\t\treturn callback
+\tend
+
+\tif type(callback) == "table" then
+\t\tlocal success, metatable = pcall(getmetatable, callback)
+\t\tlocal call = success and type(metatable) == "table" and rawget(metatable, "__call") or nil
+
+\t\tif type(call) == "function" then
+\t\t\tlocal target = callback
+\t\t\treturn function(...)
+\t\t\t\treturn target(...)
+\t\t\tend
+\t\tend
+\tend
+
+\treturn function() end
+end
+
 local function identity(callback)
-\treturn callback
+\treturn callable(callback)
 end
 
 local function attribute()
@@ -368,13 +388,13 @@ ensureFunction(globalEnvironment, "VM", attribute)
 ensureFunction(globalEnvironment, "PRESET", attribute)
 ensureFunction(globalEnvironment, "NONE", attribute)
 ensureFunction(globalEnvironment, "FAST", attribute)
-ensureFunction(globalEnvironment, "YHUB_NO_VIRTUALIZE", identity)
+globalEnvironment["YHUB_NO_VIRTUALIZE"] = identity
 ensureFunction(baseEnvironment, "LPH_ATTRIBUTES", globalEnvironment["LPH_ATTRIBUTES"])
 ensureFunction(baseEnvironment, "VM", globalEnvironment["VM"])
 ensureFunction(baseEnvironment, "PRESET", globalEnvironment["PRESET"])
 ensureFunction(baseEnvironment, "NONE", globalEnvironment["NONE"])
 ensureFunction(baseEnvironment, "FAST", globalEnvironment["FAST"])
-ensureFunction(baseEnvironment, "YHUB_NO_VIRTUALIZE", globalEnvironment["YHUB_NO_VIRTUALIZE"])
+baseEnvironment["YHUB_NO_VIRTUALIZE"] = globalEnvironment["YHUB_NO_VIRTUALIZE"]
 
 local parentFramework = Framework or globalEnvironment.YHubFramework or globalEnvironment.YCoreFramework
 local externalLoaderConfig = globalEnvironment.YHubLoaderConfig or globalEnvironment.YCoreLoaderConfig or {}

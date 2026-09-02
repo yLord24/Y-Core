@@ -32,8 +32,28 @@ local function notice(message)
 	end
 end
 
+local function callable(callback)
+	if type(callback) == "function" then
+		return callback
+	end
+
+	if type(callback) == "table" then
+		local success, metatable = pcall(getmetatable, callback)
+		local call = success and type(metatable) == "table" and rawget(metatable, "__call") or nil
+
+		if type(call) == "function" then
+			local target = callback
+			return function(...)
+				return target(...)
+			end
+		end
+	end
+
+	return function() end
+end
+
 local function identity(callback)
-	return callback
+	return callable(callback)
 end
 
 local function attribute()
@@ -53,13 +73,13 @@ ensureFunction(globalEnvironment, "VM", attribute)
 ensureFunction(globalEnvironment, "PRESET", attribute)
 ensureFunction(globalEnvironment, "NONE", attribute)
 ensureFunction(globalEnvironment, "FAST", attribute)
-ensureFunction(globalEnvironment, "YHUB_NO_VIRTUALIZE", identity)
+globalEnvironment["YHUB_NO_VIRTUALIZE"] = identity
 ensureFunction(baseEnvironment, "LPH_ATTRIBUTES", globalEnvironment["LPH_ATTRIBUTES"])
 ensureFunction(baseEnvironment, "VM", globalEnvironment["VM"])
 ensureFunction(baseEnvironment, "PRESET", globalEnvironment["PRESET"])
 ensureFunction(baseEnvironment, "NONE", globalEnvironment["NONE"])
 ensureFunction(baseEnvironment, "FAST", globalEnvironment["FAST"])
-ensureFunction(baseEnvironment, "YHUB_NO_VIRTUALIZE", globalEnvironment["YHUB_NO_VIRTUALIZE"])
+baseEnvironment["YHUB_NO_VIRTUALIZE"] = globalEnvironment["YHUB_NO_VIRTUALIZE"]
 
 if baseUrl:sub(-1) ~= "/" then
 	baseUrl = baseUrl .. "/"
