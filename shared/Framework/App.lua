@@ -24,6 +24,14 @@ local function reportAppError(framework, stage, errorObject, details)
 	return message
 end
 
+local function traceApp(framework, stage, detail)
+	if framework and type(framework.Trace) == "function" then
+		pcall(function()
+			framework:Trace(stage, detail)
+		end)
+	end
+end
+
 function App.new(framework, config)
 	return setmetatable({
 		Framework = framework,
@@ -36,19 +44,27 @@ function App.new(framework, config)
 end
 
 function App:StartModules(moduleSpecs)
+	traceApp(self.Framework, "app-modules-start", tostring(#moduleSpecs))
+
 	for _, moduleInfo in ipairs(moduleSpecs) do
 		local modulePath = moduleInfo.Path or moduleInfo[1]
 		local moduleName = moduleInfo.Name or moduleInfo[2] or modulePath
+
+		traceApp(self.Framework, "app-module-require", tostring(moduleName) .. " | " .. tostring(modulePath))
 		local requiredModule = yrequire(modulePath, moduleInfo.ForceReload == true)
+		traceApp(self.Framework, "app-module-required", tostring(moduleName))
 		local moduleInstance = requiredModule
 
 		if type(requiredModule) == "table" and type(requiredModule.new) == "function" then
+			traceApp(self.Framework, "app-module-new", tostring(moduleName))
 			moduleInstance = requiredModule.new(self)
+			traceApp(self.Framework, "app-module-new-done", tostring(moduleName))
 		end
 
 		self.Modules[moduleName] = moduleInstance
 
 		if type(moduleInstance) == "table" and type(moduleInstance.Start) == "function" then
+			traceApp(self.Framework, "app-module-start", tostring(moduleName))
 			local startSuccess, startResult = xpcall(function()
 				return moduleInstance:Start()
 			end, function(errorObject)
@@ -60,15 +76,20 @@ function App:StartModules(moduleSpecs)
 
 			if startSuccess then
 				self.Modules[moduleName] = startResult or moduleInstance
+				traceApp(self.Framework, "app-module-start-done", tostring(moduleName))
 			else
+				traceApp(self.Framework, "app-module-start-error", tostring(moduleName))
 				self.Debug:Log("module-start-error", {
 					module = moduleName,
 					error = startResult,
 				})
 			end
+		else
+			traceApp(self.Framework, "app-module-ready", tostring(moduleName))
 		end
 	end
 
+	traceApp(self.Framework, "app-modules-done", tostring(#moduleSpecs))
 	return self
 end
 

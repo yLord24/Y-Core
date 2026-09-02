@@ -639,6 +639,10 @@ if Framework.BaseUrl:sub(-1) ~= "/" then
 \tFramework.BaseUrl = Framework.BaseUrl .. "/"
 end
 
+function Framework:Trace(stage, detail)
+\ttrace(stage, detail)
+end
+
 globalEnvironment.YHubFramework = Framework
 globalEnvironment.YCoreFramework = Framework
 trace("bundle-bootstrap", "${selectedGameId}")

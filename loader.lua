@@ -255,6 +255,10 @@ local Framework = {
 	StartedAt = os.clock(),
 }
 
+function Framework:Trace(stage, detail)
+	trace(stage, detail)
+end
+
 globalEnvironment.YHubFramework = Framework
 globalEnvironment.YCoreFramework = Framework
 trace("loader-bootstrap", loaderConfig.Game or "auto")
