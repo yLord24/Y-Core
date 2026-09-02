@@ -192,7 +192,7 @@ function Assert.Report(framework, stage, errorObject, details)
 	local config = (framework and framework.Config) or {}
 	local quietRelease = isReleaseFramework(framework) and not releaseDiagnosticsEnabled(framework)
 	if quietRelease then
-		return REPORT_MARKER
+		return REPORT_MARKER .. " " .. Assert.SafeString(stage) .. ": " .. errorText
 	end
 
 	local gameId = Assert.SafeString((framework and (framework.GameId or (framework.Config and framework.Config.Game))) or "unknown")

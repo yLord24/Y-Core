@@ -49,14 +49,7 @@ local function log(message)
 end
 
 local function fail(message)
-	if Framework.Release ~= true
-		or loaderConfig.ReleaseDiagnostics == true
-		or loaderConfig.BridgeReleaseDiagnostics == true
-		or verbose
-	then
-		warn("[Y Hub] framework start failed: " .. tostring(message))
-	end
-
+	warn("[Y Hub] framework start failed: " .. tostring(message))
 	return nil
 end
 

@@ -320,6 +320,41 @@ local function identity(callback)
 \treturn callback
 end
 
+if type(LPH_NO_VIRTUALIZE) ~= "function" then
+\tfunction LPH_NO_VIRTUALIZE(callback)
+\t\treturn callback
+\tend
+end
+if type(LPH_JIT) ~= "function" then
+\tfunction LPH_JIT(callback)
+\t\treturn callback
+\tend
+end
+if type(LPH_JIT_MAX) ~= "function" then
+\tfunction LPH_JIT_MAX(callback)
+\t\treturn callback
+\tend
+end
+if type(LPH_NO_UPVALUES) ~= "function" then
+\tfunction LPH_NO_UPVALUES(callback)
+\t\treturn callback
+\tend
+end
+
+globalEnvironment["LPH_NO_VIRTUALIZE"] = globalEnvironment["LPH_NO_VIRTUALIZE"] or LPH_NO_VIRTUALIZE or identity
+globalEnvironment["LPH_JIT"] = globalEnvironment["LPH_JIT"] or LPH_JIT or identity
+globalEnvironment["LPH_JIT_MAX"] = globalEnvironment["LPH_JIT_MAX"] or LPH_JIT_MAX or identity
+globalEnvironment["LPH_NO_UPVALUES"] = globalEnvironment["LPH_NO_UPVALUES"] or LPH_NO_UPVALUES or identity
+baseEnvironment["LPH_NO_VIRTUALIZE"] = baseEnvironment["LPH_NO_VIRTUALIZE"] or globalEnvironment["LPH_NO_VIRTUALIZE"]
+baseEnvironment["LPH_JIT"] = baseEnvironment["LPH_JIT"] or globalEnvironment["LPH_JIT"]
+baseEnvironment["LPH_JIT_MAX"] = baseEnvironment["LPH_JIT_MAX"] or globalEnvironment["LPH_JIT_MAX"]
+baseEnvironment["LPH_NO_UPVALUES"] = baseEnvironment["LPH_NO_UPVALUES"] or globalEnvironment["LPH_NO_UPVALUES"]
+
+local LPH_NO_VIRTUALIZE = baseEnvironment["LPH_NO_VIRTUALIZE"]
+local LPH_JIT = baseEnvironment["LPH_JIT"]
+local LPH_JIT_MAX = baseEnvironment["LPH_JIT_MAX"]
+local LPH_NO_UPVALUES = baseEnvironment["LPH_NO_UPVALUES"]
+
 local parentFramework = Framework or globalEnvironment.YHubFramework or globalEnvironment.YCoreFramework
 local externalLoaderConfig = globalEnvironment.YHubLoaderConfig or globalEnvironment.YCoreLoaderConfig or {}
 local loaderConfig = {}
@@ -375,15 +410,6 @@ Framework.Build = {
 \tExternalModules = ${sortedExternalModulePaths.length},
 }
 
-globalEnvironment["LPH_NO_VIRTUALIZE"] = globalEnvironment["LPH_NO_VIRTUALIZE"] or identity
-globalEnvironment["LPH_JIT"] = globalEnvironment["LPH_JIT"] or identity
-globalEnvironment["LPH_JIT_MAX"] = globalEnvironment["LPH_JIT_MAX"] or identity
-globalEnvironment["LPH_NO_UPVALUES"] = globalEnvironment["LPH_NO_UPVALUES"] or identity
-baseEnvironment["LPH_NO_VIRTUALIZE"] = baseEnvironment["LPH_NO_VIRTUALIZE"] or globalEnvironment["LPH_NO_VIRTUALIZE"]
-baseEnvironment["LPH_JIT"] = baseEnvironment["LPH_JIT"] or globalEnvironment["LPH_JIT"]
-baseEnvironment["LPH_JIT_MAX"] = baseEnvironment["LPH_JIT_MAX"] or globalEnvironment["LPH_JIT_MAX"]
-baseEnvironment["LPH_NO_UPVALUES"] = baseEnvironment["LPH_NO_UPVALUES"] or globalEnvironment["LPH_NO_UPVALUES"]
-
 for bundledModulePath in pairs(bundledModules) do
 \tFramework.Cache[bundledModulePath] = nil
 end
@@ -403,14 +429,7 @@ local function log(message)
 end
 
 local function fail(message)
-\tif Framework.Release ~= true
-\t\tor loaderConfig.ReleaseDiagnostics == true
-\t\tor loaderConfig.BridgeReleaseDiagnostics == true
-\t\tor loaderConfig.Verbose == true
-\tthen
-\t\twarn("[Y Hub] bundle start failed: " .. tostring(message))
-\tend
-
+\twarn("[Y Hub] bundle start failed: " .. tostring(message))
 \treturn nil
 end
 
@@ -517,7 +536,7 @@ do
 \tif assertSuccess and type(assertModule) == "table" and type(assertModule.Attach) == "function" then
 \t\tassertModule.Attach(Framework)
 \telse
-\t\twarn("[Y Hub] Assert bootstrap failed: " .. tostring(assertModule))
+\t\twarn("[Y Hub] assert bootstrap failed: " .. tostring(assertModule))
 \tend
 end
 
