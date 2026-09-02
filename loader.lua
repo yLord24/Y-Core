@@ -16,14 +16,22 @@ local function identity(callback)
 	return callback
 end
 
-globalEnvironment["LPH_NO_VIRTUALIZE"] = globalEnvironment["LPH_NO_VIRTUALIZE"] or identity
-globalEnvironment["LPH_JIT"] = globalEnvironment["LPH_JIT"] or identity
-globalEnvironment["LPH_JIT_MAX"] = globalEnvironment["LPH_JIT_MAX"] or identity
-globalEnvironment["LPH_NO_UPVALUES"] = globalEnvironment["LPH_NO_UPVALUES"] or identity
-baseEnvironment["LPH_NO_VIRTUALIZE"] = baseEnvironment["LPH_NO_VIRTUALIZE"] or globalEnvironment["LPH_NO_VIRTUALIZE"]
-baseEnvironment["LPH_JIT"] = baseEnvironment["LPH_JIT"] or globalEnvironment["LPH_JIT"]
-baseEnvironment["LPH_JIT_MAX"] = baseEnvironment["LPH_JIT_MAX"] or globalEnvironment["LPH_JIT_MAX"]
-baseEnvironment["LPH_NO_UPVALUES"] = baseEnvironment["LPH_NO_UPVALUES"] or globalEnvironment["LPH_NO_UPVALUES"]
+local function attribute()
+	return nil
+end
+
+globalEnvironment["LPH_ATTRIBUTES"] = globalEnvironment["LPH_ATTRIBUTES"] or attribute
+globalEnvironment["VM"] = globalEnvironment["VM"] or attribute
+globalEnvironment["PRESET"] = globalEnvironment["PRESET"] or attribute
+globalEnvironment["NONE"] = globalEnvironment["NONE"] or attribute
+globalEnvironment["FAST"] = globalEnvironment["FAST"] or attribute
+globalEnvironment["YHUB_NO_VIRTUALIZE"] = globalEnvironment["YHUB_NO_VIRTUALIZE"] or identity
+baseEnvironment["LPH_ATTRIBUTES"] = baseEnvironment["LPH_ATTRIBUTES"] or globalEnvironment["LPH_ATTRIBUTES"]
+baseEnvironment["VM"] = baseEnvironment["VM"] or globalEnvironment["VM"]
+baseEnvironment["PRESET"] = baseEnvironment["PRESET"] or globalEnvironment["PRESET"]
+baseEnvironment["NONE"] = baseEnvironment["NONE"] or globalEnvironment["NONE"]
+baseEnvironment["FAST"] = baseEnvironment["FAST"] or globalEnvironment["FAST"]
+baseEnvironment["YHUB_NO_VIRTUALIZE"] = baseEnvironment["YHUB_NO_VIRTUALIZE"] or globalEnvironment["YHUB_NO_VIRTUALIZE"]
 
 if baseUrl:sub(-1) ~= "/" then
 	baseUrl = baseUrl .. "/"
