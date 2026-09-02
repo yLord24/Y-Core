@@ -47,6 +47,36 @@ local function bootstrapTraceEnabled()
 		or isPotassiumExecutor()
 end
 
+local function bootstrapPrintEnabled()
+	return loaderConfig.DebugLoading == true
+		or loaderConfig.BootstrapPrints == true
+		or isPotassiumExecutor()
+end
+
+local function trimBootstrapDetail(value)
+	local text = tostring(value or "")
+	if #text > 220 then
+		return text:sub(1, 217) .. "..."
+	end
+
+	return text
+end
+
+local function printBootstrapTrace(stage, detail)
+	if not bootstrapPrintEnabled() then
+		return
+	end
+
+	local message = string.format(
+		"[Y Hub][boot %.3f][%s] %s",
+		os.clock(),
+		tostring(stage),
+		trimBootstrapDetail(detail)
+	)
+
+	pcall(print, message)
+end
+
 local function writeBootstrapTrace(stage, detail)
 	if not bootstrapTraceEnabled() then
 		return
@@ -84,6 +114,7 @@ local function trace(stage, detail)
 	if detail ~= nil then
 		globalEnvironment.YHubLastBootstrapDetail = tostring(detail)
 	end
+	printBootstrapTrace(stage, detail)
 	writeBootstrapTrace(stage, detail)
 end
 
@@ -292,6 +323,7 @@ function Framework:FetchUrl(url)
 end
 
 local function loadBootstrapModule(modulePath)
+	trace("bootstrap-module", modulePath)
 	local moduleSource = Framework:Fetch(modulePath)
 	local loadedChunk = loadLua(moduleSource, "@" .. modulePath)
 	local moduleEnvironment = setmetatable({
@@ -385,18 +417,23 @@ end
 
 function Framework:yrequire(modulePath, forceReload)
 	modulePath = normalizeModulePath(modulePath)
+	trace("module-require", modulePath)
+
 	if not forceReload and self.Cache[modulePath] ~= nil then
+		trace("module-cache", modulePath)
 		return self.Cache[modulePath]
 	end
 
 	local moduleSource = runWithErrorReport(self, "fetch-module", {
 		module = modulePath,
 	}, function()
+		trace("module-fetch", modulePath)
 		return self:Fetch(modulePath)
 	end)
 	local loadedChunk = runWithErrorReport(self, "compile-module", {
 		module = modulePath,
 	}, function()
+		trace("module-compile", modulePath)
 		return loadLua(moduleSource, "@" .. modulePath)
 	end)
 
@@ -414,6 +451,7 @@ function Framework:yrequire(modulePath, forceReload)
 	local moduleResult = runWithErrorReport(self, "execute-module", {
 		module = modulePath,
 	}, function()
+		trace("module-execute", modulePath)
 		return setChunkEnvironment(loadedChunk, moduleEnvironment)()
 	end)
 	if moduleResult == nil then
@@ -421,6 +459,7 @@ function Framework:yrequire(modulePath, forceReload)
 	end
 
 	self.Cache[modulePath] = moduleResult
+	trace("module-loaded", modulePath)
 	return moduleResult
 end
 
@@ -480,9 +519,13 @@ function Framework:Start()
 		end
 
 		if type(gameModule) == "table" and type(gameModule.Start) == "function" then
-			return gameModule.Start(self)
+			trace("game-start-call", selectedGameId)
+			local result = gameModule.Start(self)
+			trace("game-start-return", selectedGameId)
+			return result
 		end
 
+		trace("game-start-return", selectedGameId)
 		return gameModule
 	end, function(errorObject)
 		return self:ReportError("framework-start", errorObject, {

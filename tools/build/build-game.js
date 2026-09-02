@@ -516,6 +516,36 @@ local function bootstrapTraceEnabled()
 \t\tor isPotassiumExecutor()
 end
 
+local function bootstrapPrintEnabled()
+\treturn loaderConfig.DebugLoading == true
+\t\tor loaderConfig.BootstrapPrints == true
+\t\tor isPotassiumExecutor()
+end
+
+local function trimBootstrapDetail(value)
+\tlocal text = tostring(value or "")
+\tif #text > 220 then
+\t\treturn text:sub(1, 217) .. "..."
+\tend
+
+\treturn text
+end
+
+local function printBootstrapTrace(stage, detail)
+\tif not bootstrapPrintEnabled() then
+\t\treturn
+\tend
+
+\tlocal message = string.format(
+\t\t"[Y Hub][boot %.3f][%s] %s",
+\t\tos.clock(),
+\t\ttostring(stage),
+\t\ttrimBootstrapDetail(detail)
+\t)
+
+\tpcall(print, message)
+end
+
 local function writeBootstrapTrace(stage, detail)
 \tif not bootstrapTraceEnabled() then
 \t\treturn
@@ -553,6 +583,7 @@ local function trace(stage, detail)
 \tif detail ~= nil then
 \t\tglobalEnvironment.YHubLastBootstrapDetail = tostring(detail)
 \tend
+\tprintBootstrapTrace(stage, detail)
 \twriteBootstrapTrace(stage, detail)
 end
 
@@ -698,6 +729,7 @@ function Framework:FetchUrl(url)
 end
 
 local function loadBootstrapModule(modulePath)
+\ttrace("bootstrap-module", modulePath)
 \tlocal moduleContent = Framework:Fetch(modulePath)
 \tlocal loadedChunk
 
@@ -798,13 +830,17 @@ end
 
 function Framework:yrequire(modulePath, forceReload)
 \tmodulePath = normalizeModulePath(modulePath)
+\ttrace("module-require", modulePath)
+
 \tif not forceReload and self.Cache[modulePath] ~= nil then
+\t\ttrace("module-cache", modulePath)
 \t\treturn self.Cache[modulePath]
 \tend
 
 \tlocal moduleContent = runWithErrorReport(self, "fetch-module", {
 \t\tmodule = modulePath,
 \t}, function()
+\t\ttrace("module-fetch", modulePath)
 \t\treturn self:Fetch(modulePath)
 \tend)
 \tlocal loadedChunk
@@ -812,6 +848,7 @@ function Framework:yrequire(modulePath, forceReload)
 \tloadedChunk = runWithErrorReport(self, "compile-module", {
 \t\tmodule = modulePath,
 \t}, function()
+\t\ttrace("module-compile", modulePath)
 \t\tif type(moduleContent) == "function" then
 \t\t\treturn moduleContent
 \t\tend
@@ -833,6 +870,7 @@ function Framework:yrequire(modulePath, forceReload)
 \tlocal moduleResult = runWithErrorReport(self, "execute-module", {
 \t\tmodule = modulePath,
 \t}, function()
+\t\ttrace("module-execute", modulePath)
 \t\treturn setChunkEnvironment(loadedChunk, moduleEnvironment)()
 \tend)
 \tif moduleResult == nil then
@@ -840,6 +878,7 @@ function Framework:yrequire(modulePath, forceReload)
 \tend
 
 \tself.Cache[modulePath] = moduleResult
+\ttrace("module-loaded", modulePath)
 \treturn moduleResult
 end
 
@@ -855,9 +894,13 @@ function Framework:StartBundledGame()
 \t\tlocal gameModule = self:yrequire(${JSON.stringify(selectedEntryPath)}, self.Config.ForceReload == true)
 
 \t\tif type(gameModule) == "table" and type(gameModule.Start) == "function" then
-\t\t\treturn gameModule.Start(self)
+\t\t\ttrace("game-start-call", "${selectedGameId}")
+\t\t\tlocal result = gameModule.Start(self)
+\t\t\ttrace("game-start-return", "${selectedGameId}")
+\t\t\treturn result
 \t\tend
 
+\t\ttrace("game-start-return", "${selectedGameId}")
 \t\treturn gameModule
 \tend, function(errorObject)
 \t\treturn self:ReportError("bundled-game-start", errorObject, {
