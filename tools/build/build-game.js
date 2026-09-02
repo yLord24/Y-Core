@@ -354,8 +354,20 @@ local function callable(callback)
 
 \tif type(callback) == "table" then
 \t\tlocal target = callback
+\t\tlocal failed = false
+
 \t\treturn function(...)
-\t\t\treturn target(...)
+\t\t\tif failed then
+\t\t\t\treturn nil
+\t\t\tend
+
+\t\t\tlocal success, first, second, third, fourth, fifth, sixth, seventh, eighth = pcall(target, ...)
+\t\t\tif not success then
+\t\t\t\tfailed = true
+\t\t\t\treturn nil
+\t\t\tend
+
+\t\t\treturn first, second, third, fourth, fifth, sixth, seventh, eighth
 \t\tend
 \tend
 
@@ -461,11 +473,68 @@ local function releaseDiagnosticsEnabled()
 \t\tor loaderConfig.Verbose == true
 end
 
+local function getExecutorName()
+\tlocal getter = nil
+
+\tif type(identifyexecutor) == "function" then
+\t\tgetter = identifyexecutor
+\telseif type(getexecutorname) == "function" then
+\t\tgetter = getexecutorname
+\tend
+
+\tif type(getter) ~= "function" then
+\t\treturn ""
+\tend
+
+\tlocal success, name = pcall(getter)
+\treturn success and tostring(name or "") or ""
+end
+
+local detectedExecutorName = getExecutorName()
+
+local function bootstrapTraceEnabled()
+\treturn releaseDiagnosticsEnabled()
+\t\tor string.find(string.lower(detectedExecutorName), "potassium", 1, true) ~= nil
+end
+
+local function writeBootstrapTrace(stage, detail)
+\tif not bootstrapTraceEnabled() then
+\t\treturn
+\tend
+
+\tif type(appendfile) ~= "function" and type(writefile) ~= "function" then
+\t\treturn
+\tend
+
+\tpcall(function()
+\t\tif type(makefolder) == "function" then
+\t\t\tmakefolder("YHubV3")
+\t\t\tmakefolder("YHubV3/Bridger")
+\t\tend
+\tend)
+
+\tlocal path = "YHubV3/Bridger/Bootstrap.log"
+\tlocal key = "__YHubBootstrapTraceOpened"
+\tlocal line = string.format("%.3f %s | %s\\n", os.clock(), tostring(stage), tostring(detail or ""))
+
+\tif globalEnvironment[key] ~= true and type(writefile) == "function" then
+\t\tpcall(writefile, path, "Y Hub bootstrap " .. tostring(detectedExecutorName) .. "\\n")
+\t\tglobalEnvironment[key] = true
+\tend
+
+\tif type(appendfile) == "function" then
+\t\tpcall(appendfile, path, line)
+\telseif type(writefile) == "function" then
+\t\tpcall(writefile, path, line)
+\tend
+end
+
 local function trace(stage, detail)
 \tglobalEnvironment.YHubLastBootstrapStage = tostring(stage)
 \tif detail ~= nil then
 \t\tglobalEnvironment.YHubLastBootstrapDetail = tostring(detail)
 \tend
+\twriteBootstrapTrace(stage, detail)
 end
 
 local function notice(message)

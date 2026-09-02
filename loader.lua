@@ -19,11 +19,68 @@ local function releaseDiagnosticsEnabled()
 		or loaderConfig.Verbose == true
 end
 
+local function getExecutorName()
+	local getter = nil
+
+	if type(identifyexecutor) == "function" then
+		getter = identifyexecutor
+	elseif type(getexecutorname) == "function" then
+		getter = getexecutorname
+	end
+
+	if type(getter) ~= "function" then
+		return ""
+	end
+
+	local success, name = pcall(getter)
+	return success and tostring(name or "") or ""
+end
+
+local detectedExecutorName = getExecutorName()
+
+local function bootstrapTraceEnabled()
+	return releaseDiagnosticsEnabled()
+		or string.find(string.lower(detectedExecutorName), "potassium", 1, true) ~= nil
+end
+
+local function writeBootstrapTrace(stage, detail)
+	if not bootstrapTraceEnabled() then
+		return
+	end
+
+	if type(appendfile) ~= "function" and type(writefile) ~= "function" then
+		return
+	end
+
+	pcall(function()
+		if type(makefolder) == "function" then
+			makefolder("YHubV3")
+			makefolder("YHubV3/Bridger")
+		end
+	end)
+
+	local path = "YHubV3/Bridger/Bootstrap.log"
+	local key = "__YHubBootstrapTraceOpened"
+	local line = string.format("%.3f %s | %s\n", os.clock(), tostring(stage), tostring(detail or ""))
+
+	if globalEnvironment[key] ~= true and type(writefile) == "function" then
+		pcall(writefile, path, "Y Hub bootstrap " .. tostring(detectedExecutorName) .. "\n")
+		globalEnvironment[key] = true
+	end
+
+	if type(appendfile) == "function" then
+		pcall(appendfile, path, line)
+	elseif type(writefile) == "function" then
+		pcall(writefile, path, line)
+	end
+end
+
 local function trace(stage, detail)
 	globalEnvironment.YHubLastBootstrapStage = tostring(stage)
 	if detail ~= nil then
 		globalEnvironment.YHubLastBootstrapDetail = tostring(detail)
 	end
+	writeBootstrapTrace(stage, detail)
 end
 
 local function notice(message)
@@ -39,8 +96,20 @@ local function callable(callback)
 
 	if type(callback) == "table" then
 		local target = callback
+		local failed = false
+
 		return function(...)
-			return target(...)
+			if failed then
+				return nil
+			end
+
+			local success, first, second, third, fourth, fifth, sixth, seventh, eighth = pcall(target, ...)
+			if not success then
+				failed = true
+				return nil
+			end
+
+			return first, second, third, fourth, fifth, sixth, seventh, eighth
 		end
 	end
 
