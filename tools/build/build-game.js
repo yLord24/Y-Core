@@ -160,6 +160,11 @@ function findGameEntryPath(gameId) {
 }
 
 function findGameBundleName(gameId) {
+	const explicitBundleName = findGameFieldValue(gameId, "BundleName");
+	if (explicitBundleName) {
+		return explicitBundleName;
+	}
+
 	const bundleUrl = findGameFieldValue(gameId, "BundleUrl")
 		|| findGameFieldValue(gameId, "BuildUrl")
 		|| findGameFieldValue(gameId, "LoaderUrl");
@@ -378,6 +383,22 @@ end
 loaderConfig.Game = "${selectedGameId}"
 loaderConfig.Bundled = true
 
+local function releaseDiagnosticsEnabled()
+\treturn loaderConfig.ReleaseDiagnostics == true
+\t\tor loaderConfig.BridgeReleaseDiagnostics == true
+\t\tor loaderConfig.Verbose == true
+end
+
+local function trace(stage, detail)
+\tglobalEnvironment.YHubLastBootstrapStage = tostring(stage)
+\tif not releaseDiagnosticsEnabled() then
+\t\treturn
+\tend
+
+\tlocal suffix = detail ~= nil and (": " .. tostring(detail)) or ""
+\twarn("[Y Hub] " .. tostring(stage) .. suffix)
+end
+
 local Framework = parentFramework or {
 \tName = "Y Hub",
 \tVersion = "0.1.0",
@@ -419,6 +440,7 @@ end
 
 globalEnvironment.YHubFramework = Framework
 globalEnvironment.YCoreFramework = Framework
+trace("bundle-bootstrap", "${selectedGameId}")
 
 --//Source
 local function log(message)
@@ -501,6 +523,7 @@ function Framework:FetchUrl(url)
 \turl = withCacheBust(tostring(url))
 
 \tlog("fetch " .. url)
+\ttrace("fetch-url", url)
 \treturn game:HttpGet(url)
 end
 
@@ -568,6 +591,7 @@ end
 
 function Framework:LoadUrl(url, chunkName)
 \tlocal resolvedChunkName = chunkName or ("@" .. tostring(url))
+\ttrace("load-url", resolvedChunkName)
 \tlocal moduleSource = runWithErrorReport(self, "fetch-url", {
 \t\turl = url,
 \t\tchunk = resolvedChunkName,
@@ -578,6 +602,7 @@ function Framework:LoadUrl(url, chunkName)
 \t\turl = url,
 \t\tchunk = resolvedChunkName,
 \t}, function()
+\t\ttrace("compile-url", resolvedChunkName)
 \t\treturn loadLua(moduleSource, resolvedChunkName)
 \tend)
 
@@ -596,6 +621,7 @@ function Framework:LoadUrl(url, chunkName)
 \t\turl = url,
 \t\tchunk = resolvedChunkName,
 \t}, function()
+\t\ttrace("execute-url", resolvedChunkName)
 \t\treturn setChunkEnvironment(loadedChunk, moduleEnvironment)()
 \tend)
 end
@@ -649,18 +675,13 @@ end
 
 Framework.Require = Framework.yrequire
 
-local function releaseDiagnosticsEnabled()
-\treturn loaderConfig.ReleaseDiagnostics == true
-\t\tor loaderConfig.BridgeReleaseDiagnostics == true
-\t\tor loaderConfig.Verbose == true
-end
-
 if Framework.Release ~= true or releaseDiagnosticsEnabled() then
 \tFramework:StartErrorWatcher()
 end
 
 function Framework:StartBundledGame()
 \tlocal startSuccess, startResult = xpcall(function()
+\t\ttrace("bundled-game-start", "${selectedGameId}")
 \t\tlocal gameModule = self:yrequire(${JSON.stringify(selectedEntryPath)}, self.Config.ForceReload == true)
 
 \t\tif type(gameModule) == "table" and type(gameModule.Start) == "function" then

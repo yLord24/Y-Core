@@ -12,6 +12,22 @@ local baseUrl = loaderConfig.BaseUrl or "https://raw.githubusercontent.com/yLord
 local verbose = loaderConfig.Verbose == true
 local automaticCacheBust = tostring(math.floor(os.clock() * 1000000))
 
+local function releaseDiagnosticsEnabled()
+	return loaderConfig.ReleaseDiagnostics == true
+		or loaderConfig.BridgeReleaseDiagnostics == true
+		or loaderConfig.Verbose == true
+end
+
+local function trace(stage, detail)
+	globalEnvironment.YHubLastBootstrapStage = tostring(stage)
+	if not releaseDiagnosticsEnabled() then
+		return
+	end
+
+	local suffix = detail ~= nil and (": " .. tostring(detail)) or ""
+	warn("[Y Hub] " .. tostring(stage) .. suffix)
+end
+
 local function identity(callback)
 	return callback
 end
@@ -56,6 +72,7 @@ local Framework = {
 
 globalEnvironment.YHubFramework = Framework
 globalEnvironment.YCoreFramework = Framework
+trace("loader-bootstrap", loaderConfig.Game or "auto")
 
 --//Source
 local function log(message)
@@ -116,6 +133,7 @@ function Framework:FetchUrl(url)
 	url = withCacheBust(tostring(url))
 
 	log("fetch " .. url)
+	trace("fetch-url", url)
 	return game:HttpGet(url)
 end
 
@@ -176,6 +194,7 @@ end
 
 function Framework:LoadUrl(url, chunkName)
 	local resolvedChunkName = chunkName or ("@" .. tostring(url))
+	trace("load-url", resolvedChunkName)
 	local moduleSource = runWithErrorReport(self, "fetch-url", {
 		url = url,
 		chunk = resolvedChunkName,
@@ -186,6 +205,7 @@ function Framework:LoadUrl(url, chunkName)
 		url = url,
 		chunk = resolvedChunkName,
 	}, function()
+		trace("compile-url", resolvedChunkName)
 		return loadLua(moduleSource, resolvedChunkName)
 	end)
 
@@ -204,6 +224,7 @@ function Framework:LoadUrl(url, chunkName)
 		url = url,
 		chunk = resolvedChunkName,
 	}, function()
+		trace("execute-url", resolvedChunkName)
 		return setChunkEnvironment(loadedChunk, moduleEnvironment)()
 	end)
 end
@@ -251,12 +272,6 @@ end
 
 Framework.Require = Framework.yrequire
 
-local function releaseDiagnosticsEnabled()
-	return loaderConfig.ReleaseDiagnostics == true
-		or loaderConfig.BridgeReleaseDiagnostics == true
-		or loaderConfig.Verbose == true
-end
-
 if Framework.Release ~= true or releaseDiagnosticsEnabled() then
 	Framework:StartErrorWatcher()
 end
@@ -264,6 +279,7 @@ end
 function Framework:Start()
 	--> Load selected game
 	local startSuccess, startResult = xpcall(function()
+		trace("framework-start", self.Config.Game or "auto")
 		local gameRegistry = self:yrequire("games/index.lua", self.Config.ForceReload == true)
 		local selectedGameId = self.Config.Game
 
@@ -288,6 +304,7 @@ function Framework:Start()
 		self.Game = gameInfo
 		self.Name = gameInfo.Name or self.Name
 		self.Version = tostring(gameInfo.Version or self.Version)
+		trace("game-selected", selectedGameId)
 
 		local sourceMode = self.Config.SourceMode == true
 		local gameModule
@@ -299,6 +316,7 @@ function Framework:Start()
 			local bundleUrl = gameInfo.BundleUrl or gameInfo.BuildUrl or gameInfo.LoaderUrl
 
 			if bundleUrl then
+				trace("bundle-url", bundleUrl)
 				gameModule = self:LoadUrl(bundleUrl, "@" .. selectedGameId .. ".bundle")
 			elseif gameInfo.Loader then
 				gameModule = self:yrequire(gameInfo.Loader, self.Config.ForceReload == true)

@@ -5,10 +5,11 @@ local GameRegistry = {
 
 	Games = {
 		bridge = {
-			Name = "Y Hub - Bridge",
+			Name = "Y Hub - Bridger",
 			Version = "0.1.0",
 			Entry = "games/Bridge/init.lua",
-			BundleUrl = "https://raw.githubusercontent.com/yLord24/Y-Core-Builds/main/Bridge.luau",
+			BundleName = "Bridger.luau",
+			BundleUrl = "https://raw.githubusercontent.com/yLord24/Y-Core-Builds/main/Bridger.luau",
 			Manifest = "games/Bridge/Metadatas/Manifest.lua",
 			PlaceIds = { 133950099874787 },
 		},
