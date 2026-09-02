@@ -385,7 +385,7 @@ loaderConfig.Bundled = true
 
 local function releaseDiagnosticsEnabled()
 \treturn loaderConfig.ReleaseDiagnostics == true
-\t\tor loaderConfig.BridgeReleaseDiagnostics == true
+\t\tor loaderConfig.BridgerReleaseDiagnostics == true
 \t\tor loaderConfig.Verbose == true
 end
 

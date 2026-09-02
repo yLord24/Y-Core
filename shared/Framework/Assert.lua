@@ -26,7 +26,7 @@ end
 local function releaseDiagnosticsEnabled(framework)
 	local config = framework and framework.Config or {}
 	return config.ReleaseDiagnostics == true
-		or config.BridgeReleaseDiagnostics == true
+		or config.BridgerReleaseDiagnostics == true
 		or config.Verbose == true
 end
 

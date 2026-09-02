@@ -4,13 +4,13 @@ local GameRegistry = {
 	PublicBaseUrl = "https://raw.githubusercontent.com/yLord24/Y-Core/main/",
 
 	Games = {
-		bridge = {
+		bridger = {
 			Name = "Y Hub - Bridger",
 			Version = "0.1.0",
-			Entry = "games/Bridge/init.lua",
+			Entry = "games/Bridger/init.lua",
 			BundleName = "Bridger.luau",
 			BundleUrl = "https://raw.githubusercontent.com/yLord24/Y-Core-Builds/main/Bridger.luau",
-			Manifest = "games/Bridge/Metadatas/Manifest.lua",
+			Manifest = "games/Bridger/Metadatas/Manifest.lua",
 			PlaceIds = { 133950099874787 },
 		},
 		shinsei = {

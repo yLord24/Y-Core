@@ -10,7 +10,7 @@ tmp/
 Thumbs.db
 .DS_Store
 
-# Local executor bridge used only for controlled dev sessions.
+# Local executor Bridger used only for controlled dev sessions.
 /tools/dev/executor-agent.lua
 
 # Private game sources stay local by default. Public game bundle URLs live in games/index.lua.

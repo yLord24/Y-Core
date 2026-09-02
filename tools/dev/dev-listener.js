@@ -11,12 +11,12 @@ const argumentList = process.argv.slice(2);
 const projectRoot = path.resolve(readArgumentValue("--root", path.resolve(__dirname, "../..")));
 const port = Number(readArgumentValue("--port", "8124")) || 8124;
 const host = readArgumentValue("--host", "127.0.0.1");
-const bridgeRoot = path.join(projectRoot, ".ycore-dev");
+const agentRoot = path.join(projectRoot, ".ycore-dev");
 
 const directoryMap = {
-	Commands: path.join(bridgeRoot, "commands"),
-	Results: path.join(bridgeRoot, "results"),
-	Logs: path.join(bridgeRoot, "logs"),
+	Commands: path.join(agentRoot, "commands"),
+	Results: path.join(agentRoot, "results"),
+	Logs: path.join(agentRoot, "logs"),
 };
 
 const contentTypes = {

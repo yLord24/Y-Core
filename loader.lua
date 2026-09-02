@@ -14,7 +14,7 @@ local automaticCacheBust = tostring(math.floor(os.clock() * 1000000))
 
 local function releaseDiagnosticsEnabled()
 	return loaderConfig.ReleaseDiagnostics == true
-		or loaderConfig.BridgeReleaseDiagnostics == true
+		or loaderConfig.BridgerReleaseDiagnostics == true
 		or loaderConfig.Verbose == true
 end
 
