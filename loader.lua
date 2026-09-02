@@ -38,14 +38,9 @@ local function callable(callback)
 	end
 
 	if type(callback) == "table" then
-		local success, metatable = pcall(getmetatable, callback)
-		local call = success and type(metatable) == "table" and rawget(metatable, "__call") or nil
-
-		if type(call) == "function" then
-			local target = callback
-			return function(...)
-				return target(...)
-			end
+		local target = callback
+		return function(...)
+			return target(...)
 		end
 	end
 

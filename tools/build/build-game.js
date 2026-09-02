@@ -353,14 +353,9 @@ local function callable(callback)
 \tend
 
 \tif type(callback) == "table" then
-\t\tlocal success, metatable = pcall(getmetatable, callback)
-\t\tlocal call = success and type(metatable) == "table" and rawget(metatable, "__call") or nil
-
-\t\tif type(call) == "function" then
-\t\t\tlocal target = callback
-\t\t\treturn function(...)
-\t\t\t\treturn target(...)
-\t\t\tend
+\t\tlocal target = callback
+\t\treturn function(...)
+\t\t\treturn target(...)
 \t\tend
 \tend
 
