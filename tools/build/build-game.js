@@ -408,12 +408,15 @@ end
 
 local function trace(stage, detail)
 \tglobalEnvironment.YHubLastBootstrapStage = tostring(stage)
-\tif not releaseDiagnosticsEnabled() then
-\t\treturn
+\tif detail ~= nil then
+\t\tglobalEnvironment.YHubLastBootstrapDetail = tostring(detail)
 \tend
+end
 
-\tlocal suffix = detail ~= nil and (": " .. tostring(detail)) or ""
-\twarn("[Y Hub] " .. tostring(stage) .. suffix)
+local function notice(message)
+\tif releaseDiagnosticsEnabled() then
+\t\twarn("[Y Hub] " .. tostring(message))
+\tend
 end
 
 local Framework = parentFramework or {
@@ -718,6 +721,7 @@ function Framework:StartBundledGame()
 \tend
 
 \tlog("started bundled ${selectedGameId}")
+\tnotice("bundle loaded: ${selectedGameId}")
 \treturn startResult
 end
 

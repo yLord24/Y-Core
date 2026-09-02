@@ -1,5 +1,6 @@
 --//Y Hub Loader
--- Local dev: getgenv().YHubLoaderConfig = { BaseUrl = "http://127.0.0.1:8124/", Game = "shinsei", SourceMode = true, ForceReload = true }
+-- Release: loadstring(game:HttpGet("https://raw.githubusercontent.com/yLord24/Y-Core/main/loader.lua"))()
+-- Local dev: getgenv().YHubLoaderConfig = { BaseUrl = "http://127.0.0.1:8124/", Game = "bridger", SourceMode = true, ForceReload = true }
 
 --//Variables
 local globalEnvironment = (getgenv and getgenv()) or _G
@@ -20,12 +21,15 @@ end
 
 local function trace(stage, detail)
 	globalEnvironment.YHubLastBootstrapStage = tostring(stage)
-	if not releaseDiagnosticsEnabled() then
-		return
+	if detail ~= nil then
+		globalEnvironment.YHubLastBootstrapDetail = tostring(detail)
 	end
+end
 
-	local suffix = detail ~= nil and (": " .. tostring(detail)) or ""
-	warn("[Y Hub] " .. tostring(stage) .. suffix)
+local function notice(message)
+	if releaseDiagnosticsEnabled() then
+		warn("[Y Hub] " .. tostring(message))
+	end
 end
 
 local function identity(callback)
@@ -341,6 +345,7 @@ function Framework:Start()
 	end
 
 	log("started " .. tostring(self.Name) .. " " .. tostring(self.Version))
+	notice("loaded: " .. tostring(self.Name))
 	return startResult
 end
 
