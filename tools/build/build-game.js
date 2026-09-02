@@ -119,7 +119,24 @@ function readModule(modulePath) {
 		fail(`Missing module: ${normalizedModulePath}`);
 	}
 
-	return fs.readFileSync(absolutePath, "utf8");
+	return transformModuleSource(normalizedModulePath, fs.readFileSync(absolutePath, "utf8"));
+}
+
+function transformModuleSource(modulePath, source) {
+	const normalizedModulePath = normalizeModulePath(modulePath);
+	const configPath = `${selectedGameRootPath}/Metadatas/Config.lua`;
+
+	if (releaseBuild && selectedGameId === "bridger" && normalizedModulePath === configPath) {
+		const stampedSource = source.replace(/(Neutralizer\s*=\s*\{[\s\S]*?\bValidated\s*=\s*)false(\s*,)/, "$1true$2");
+
+		if (stampedSource === source) {
+			fail("Unable to stamp Bridger release validation flag.");
+		}
+
+		return stampedSource;
+	}
+
+	return source;
 }
 
 function findGameBlock(gameId) {
