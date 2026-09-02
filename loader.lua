@@ -68,6 +68,45 @@ local function ensureFunction(environment, name, fallback)
 	return environment[name]
 end
 
+local function installNewcclosureCompatibility()
+	local key = "__YHubNewcclosureCompat"
+	local state = rawget(globalEnvironment, key) or rawget(baseEnvironment, key)
+	local native = type(state) == "table" and type(state.Native) == "function" and state.Native or nil
+
+	if type(native) ~= "function" and type(newcclosure) == "function" then
+		native = newcclosure
+	end
+
+	if type(native) ~= "function" then
+		return
+	end
+
+	local proxy = function(callback)
+		local normalized = callable(callback)
+		local success, closure = pcall(native, normalized)
+
+		if success and type(closure) == "function" then
+			return closure
+		end
+
+		return normalized
+	end
+
+	state = {
+		Native = native,
+		Proxy = proxy,
+	}
+
+	pcall(function()
+		globalEnvironment[key] = state
+		globalEnvironment["newcclosure"] = proxy
+	end)
+	pcall(function()
+		baseEnvironment[key] = state
+		baseEnvironment["newcclosure"] = proxy
+	end)
+end
+
 ensureFunction(globalEnvironment, "LPH_ATTRIBUTES", attribute)
 ensureFunction(globalEnvironment, "VM", attribute)
 ensureFunction(globalEnvironment, "PRESET", attribute)
@@ -80,6 +119,7 @@ ensureFunction(baseEnvironment, "PRESET", globalEnvironment["PRESET"])
 ensureFunction(baseEnvironment, "NONE", globalEnvironment["NONE"])
 ensureFunction(baseEnvironment, "FAST", globalEnvironment["FAST"])
 baseEnvironment["YHUB_NO_VIRTUALIZE"] = globalEnvironment["YHUB_NO_VIRTUALIZE"]
+installNewcclosureCompatibility()
 
 if baseUrl:sub(-1) ~= "/" then
 	baseUrl = baseUrl .. "/"

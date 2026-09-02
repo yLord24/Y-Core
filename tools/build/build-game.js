@@ -383,6 +383,45 @@ local function ensureFunction(environment, name, fallback)
 \treturn environment[name]
 end
 
+local function installNewcclosureCompatibility()
+\tlocal key = "__YHubNewcclosureCompat"
+\tlocal state = rawget(globalEnvironment, key) or rawget(baseEnvironment, key)
+\tlocal native = type(state) == "table" and type(state.Native) == "function" and state.Native or nil
+
+\tif type(native) ~= "function" and type(newcclosure) == "function" then
+\t\tnative = newcclosure
+\tend
+
+\tif type(native) ~= "function" then
+\t\treturn
+\tend
+
+\tlocal proxy = function(callback)
+\t\tlocal normalized = callable(callback)
+\t\tlocal success, closure = pcall(native, normalized)
+
+\t\tif success and type(closure) == "function" then
+\t\t\treturn closure
+\t\tend
+
+\t\treturn normalized
+\tend
+
+\tstate = {
+\t\tNative = native,
+\t\tProxy = proxy,
+\t}
+
+\tpcall(function()
+\t\tglobalEnvironment[key] = state
+\t\tglobalEnvironment["newcclosure"] = proxy
+\tend)
+\tpcall(function()
+\t\tbaseEnvironment[key] = state
+\t\tbaseEnvironment["newcclosure"] = proxy
+\tend)
+end
+
 ensureFunction(globalEnvironment, "LPH_ATTRIBUTES", attribute)
 ensureFunction(globalEnvironment, "VM", attribute)
 ensureFunction(globalEnvironment, "PRESET", attribute)
@@ -395,6 +434,7 @@ ensureFunction(baseEnvironment, "PRESET", globalEnvironment["PRESET"])
 ensureFunction(baseEnvironment, "NONE", globalEnvironment["NONE"])
 ensureFunction(baseEnvironment, "FAST", globalEnvironment["FAST"])
 baseEnvironment["YHUB_NO_VIRTUALIZE"] = globalEnvironment["YHUB_NO_VIRTUALIZE"]
+installNewcclosureCompatibility()
 
 local parentFramework = Framework or globalEnvironment.YHubFramework or globalEnvironment.YCoreFramework
 local externalLoaderConfig = globalEnvironment.YHubLoaderConfig or globalEnvironment.YCoreLoaderConfig or {}
