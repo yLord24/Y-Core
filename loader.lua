@@ -1,5 +1,5 @@
 --//Y Hub Loader
--- Local dev: getgenv().YHubLoaderConfig = { BaseUrl = "http://127.0.0.1:8124/", Game = "shinsei", SourceMode = true }
+-- Local dev: getgenv().YHubLoaderConfig = { BaseUrl = "http://127.0.0.1:8124/", Game = "shinsei", SourceMode = true, ForceReload = true }
 
 --//Variables
 local globalEnvironment = (getgenv and getgenv()) or _G
@@ -10,6 +10,7 @@ local loaderConfig = globalEnvironment.YHubLoaderConfig
 local baseEnvironment = (getfenv and getfenv()) or _G
 local baseUrl = loaderConfig.BaseUrl or "https://raw.githubusercontent.com/yLord24/Y-Core/main/"
 local verbose = loaderConfig.Verbose == true
+local automaticCacheBust = tostring(math.floor(os.clock() * 1000000))
 
 local function identity(callback)
 	return callback
@@ -48,7 +49,14 @@ local function log(message)
 end
 
 local function fail(message)
-	warn("[Y Hub] framework start failed: " .. tostring(message))
+	if Framework.Release ~= true
+		or loaderConfig.ReleaseDiagnostics == true
+		or loaderConfig.BridgeReleaseDiagnostics == true
+		or verbose
+	then
+		warn("[Y Hub] framework start failed: " .. tostring(message))
+	end
+
 	return nil
 end
 
@@ -61,7 +69,7 @@ local function cacheBust()
 		return tostring(loaderConfig.CacheBust)
 	end
 
-	return tostring(math.floor(os.clock() * 1000))
+	return automaticCacheBust
 end
 
 local function withCacheBust(url)
@@ -233,7 +241,16 @@ function Framework:yrequire(modulePath, forceReload)
 end
 
 Framework.Require = Framework.yrequire
-Framework:StartErrorWatcher()
+
+local function releaseDiagnosticsEnabled()
+	return loaderConfig.ReleaseDiagnostics == true
+		or loaderConfig.BridgeReleaseDiagnostics == true
+		or loaderConfig.Verbose == true
+end
+
+if Framework.Release ~= true or releaseDiagnosticsEnabled() then
+	Framework:StartErrorWatcher()
+end
 
 function Framework:Start()
 	--> Load selected game

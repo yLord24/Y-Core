@@ -4,6 +4,13 @@ param(
 
 	[string]$Label = "manual",
 
+	[int]$Timeout = 120,
+
+	[ValidateSet("standard", "read_only")]
+	[string]$Policy = "standard",
+
+	[string]$TargetClient,
+
 	[int]$Port = 8124
 )
 
@@ -13,6 +20,9 @@ $Code = [string](Get-Content -LiteralPath $Path -Raw)
 $Payload = [PSCustomObject]@{
 	label = $Label
 	code = ([string]$Code)
+	timeout = $Timeout
+	policy = $Policy
+	targetClient = if ([string]::IsNullOrWhiteSpace($TargetClient)) { $null } else { $TargetClient.Trim() }
 } | ConvertTo-Json -Depth 8 -Compress
 
 Invoke-RestMethod `

@@ -14,6 +14,22 @@ local EXTERNAL_LOG_NOISE_PATTERNS = {
 }
 
 --//Source
+local function isReleaseFramework(framework)
+	if framework and framework.Release == true then
+		return true
+	end
+
+	local build = framework and framework.Build
+	return type(build) == "table" and build.Release == true
+end
+
+local function releaseDiagnosticsEnabled(framework)
+	local config = framework and framework.Config or {}
+	return config.ReleaseDiagnostics == true
+		or config.BridgeReleaseDiagnostics == true
+		or config.Verbose == true
+end
+
 function Assert.SafeString(value)
 	local success, result = pcall(function()
 		return tostring(value)
@@ -174,6 +190,11 @@ function Assert.Report(framework, stage, errorObject, details)
 	end
 
 	local config = (framework and framework.Config) or {}
+	local quietRelease = isReleaseFramework(framework) and not releaseDiagnosticsEnabled(framework)
+	if quietRelease then
+		return REPORT_MARKER
+	end
+
 	local gameId = Assert.SafeString((framework and (framework.GameId or (framework.Config and framework.Config.Game))) or "unknown")
 	local trace = Assert.Traceback(errorObject, 3)
 	local entry = table.concat({
@@ -208,6 +229,9 @@ end
 
 function Assert.StartWatcher(framework)
 	if not framework then
+		return false
+	end
+	if isReleaseFramework(framework) and not releaseDiagnosticsEnabled(framework) then
 		return false
 	end
 	if framework.ErrorWatcherConnection then

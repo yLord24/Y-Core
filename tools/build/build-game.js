@@ -316,10 +316,14 @@ function createBundleSource() {
 --//Variables
 local globalEnvironment = (getgenv and getgenv()) or _G
 local baseEnvironment = (getfenv and getfenv()) or _G
+local function identity(callback)
+\treturn callback
+end
 
 local parentFramework = Framework or globalEnvironment.YHubFramework or globalEnvironment.YCoreFramework
 local externalLoaderConfig = globalEnvironment.YHubLoaderConfig or globalEnvironment.YCoreLoaderConfig or {}
 local loaderConfig = {}
+local automaticCacheBust = tostring(math.floor(os.clock() * 1000000))
 local bundledModules = {
 ${bundledModules}
 }
@@ -356,6 +360,7 @@ Framework.Cache = Framework.Cache or {}
 Framework.Config = loaderConfig
 Framework.Bundled = true
 Framework.NativeModules = ${nativeModuleBuild}
+Framework.Release = ${releaseBuild || fullBuild}
 Framework.ReleaseSignature = ${JSON.stringify(releaseSignature)}
 Framework.GameId = "${selectedGameId}"
 Framework.Build = {
@@ -364,10 +369,20 @@ Framework.Build = {
 \tBundleName = ${JSON.stringify(selectedBundleName)},
 \tSignature = ${JSON.stringify(releaseSignature)},
 \tBuiltAt = "${buildTime}",
+\tRelease = ${releaseBuild || fullBuild},
 \tModules = ${sortedModulePaths.length},
 \tNativeModules = ${nativeModuleBuild},
 \tExternalModules = ${sortedExternalModulePaths.length},
 }
+
+globalEnvironment["LPH_NO_VIRTUALIZE"] = globalEnvironment["LPH_NO_VIRTUALIZE"] or identity
+globalEnvironment["LPH_JIT"] = globalEnvironment["LPH_JIT"] or identity
+globalEnvironment["LPH_JIT_MAX"] = globalEnvironment["LPH_JIT_MAX"] or identity
+globalEnvironment["LPH_NO_UPVALUES"] = globalEnvironment["LPH_NO_UPVALUES"] or identity
+baseEnvironment["LPH_NO_VIRTUALIZE"] = baseEnvironment["LPH_NO_VIRTUALIZE"] or globalEnvironment["LPH_NO_VIRTUALIZE"]
+baseEnvironment["LPH_JIT"] = baseEnvironment["LPH_JIT"] or globalEnvironment["LPH_JIT"]
+baseEnvironment["LPH_JIT_MAX"] = baseEnvironment["LPH_JIT_MAX"] or globalEnvironment["LPH_JIT_MAX"]
+baseEnvironment["LPH_NO_UPVALUES"] = baseEnvironment["LPH_NO_UPVALUES"] or globalEnvironment["LPH_NO_UPVALUES"]
 
 for bundledModulePath in pairs(bundledModules) do
 \tFramework.Cache[bundledModulePath] = nil
@@ -388,7 +403,14 @@ local function log(message)
 end
 
 local function fail(message)
-\twarn("[Y Hub] bundle start failed: " .. tostring(message))
+\tif Framework.Release ~= true
+\t\tor loaderConfig.ReleaseDiagnostics == true
+\t\tor loaderConfig.BridgeReleaseDiagnostics == true
+\t\tor loaderConfig.Verbose == true
+\tthen
+\t\twarn("[Y Hub] bundle start failed: " .. tostring(message))
+\tend
+
 \treturn nil
 end
 
@@ -401,7 +423,7 @@ local function cacheBust()
 \t\treturn tostring(loaderConfig.CacheBust)
 \tend
 
-\treturn tostring(math.floor(os.clock() * 1000))
+\treturn automaticCacheBust
 end
 
 local function withCacheBust(url)
@@ -608,7 +630,16 @@ function Framework:yrequire(modulePath, forceReload)
 end
 
 Framework.Require = Framework.yrequire
-Framework:StartErrorWatcher()
+
+local function releaseDiagnosticsEnabled()
+\treturn loaderConfig.ReleaseDiagnostics == true
+\t\tor loaderConfig.BridgeReleaseDiagnostics == true
+\t\tor loaderConfig.Verbose == true
+end
+
+if Framework.Release ~= true or releaseDiagnosticsEnabled() then
+\tFramework:StartErrorWatcher()
+end
 
 function Framework:StartBundledGame()
 \tlocal startSuccess, startResult = xpcall(function()

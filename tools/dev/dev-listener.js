@@ -139,21 +139,33 @@ function listPendingCommands() {
 	);
 }
 
-function enqueueCommand(code, label) {
+function enqueueCommand(code, label, options = {}) {
 	if (typeof code !== "string" || !code.trim()) {
 		throw new Error("Missing command code");
 	}
+
+	const requestedTimeout = Number(options.timeout);
+	const timeout = Number.isFinite(requestedTimeout)
+		? Math.min(Math.max(requestedTimeout, 5), 600)
+		: 120;
+	const policy = options.policy === "read_only" ? "read_only" : "standard";
+	const targetClient = typeof options.targetClient === "string" && options.targetClient.trim()
+		? options.targetClient.trim()
+		: null;
 
 	const id = createCommandId(label);
 	const command = {
 		id,
 		label: label || "command",
 		code,
+		policy,
+		targetClient,
+		timeout: policy === "read_only" ? Math.min(timeout, 30) : timeout,
 		createdAt: nowIso(),
 	};
 
 	fs.writeFileSync(path.join(directoryMap.Commands, `${id}.json`), JSON.stringify(command, null, 2), "utf8");
-	appendLog(`[enqueue] ${id} ${command.label}`);
+	appendLog(`[enqueue] ${id} ${command.label} target=${targetClient || "any"}`);
 
 	return command;
 }
@@ -177,6 +189,10 @@ function claimNextCommand(clientName) {
 			const badPath = path.join(directoryMap.Commands, `${commandFile.name}.bad`);
 			fs.renameSync(commandFile.file, badPath);
 			appendLog(`[bad-command] ${commandFile.name} invalid-shape`);
+			continue;
+		}
+
+		if (command.targetClient && command.targetClient !== clientName) {
 			continue;
 		}
 
@@ -346,12 +362,19 @@ async function handleApi(req, res, route, parsedUrl) {
 	if (req.method === "POST" && (route === "/enqueue" || route === "/agent/enqueue")) {
 		const body = await readBody(req);
 		const payload = JSON.parse(body || "{}");
-		const command = enqueueCommand(payload.code, payload.label);
+		const command = enqueueCommand(payload.code, payload.label, {
+			policy: payload.policy,
+			timeout: payload.timeout,
+			targetClient: payload.targetClient,
+		});
 
 		return sendJson(res, 200, {
 			ok: true,
 			id: command.id,
 			label: command.label,
+			policy: command.policy,
+			targetClient: command.targetClient,
+			timeout: command.timeout,
 		});
 	}
 

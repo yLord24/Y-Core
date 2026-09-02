@@ -4,6 +4,14 @@ local GameRegistry = {
 	PublicBaseUrl = "https://raw.githubusercontent.com/yLord24/Y-Core/main/",
 
 	Games = {
+		bridge = {
+			Name = "Y Hub - Bridge",
+			Version = "0.1.0",
+			Entry = "games/Bridge/init.lua",
+			BundleUrl = "https://raw.githubusercontent.com/yLord24/Y-Core-Builds/main/Bridge.luau",
+			Manifest = "games/Bridge/Metadatas/Manifest.lua",
+			PlaceIds = { 133950099874787 },
+		},
 		shinsei = {
 			Name = "Y Auto Signal",
 			Version = "0.1.0",
