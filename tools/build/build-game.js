@@ -40,6 +40,9 @@ const ignoredGameDirectorySet = new Set([
 	`${selectedGameRootPath}/Experiments`,
 	`${selectedGameRootPath}/Tests`,
 ]);
+const releaseIgnoredGameFileSet = new Set([
+	`${selectedGameRootPath}/Features/Misc/Components/DevDebug.lua`,
+]);
 
 //--//Source
 function readArgumentValue(argumentName, fallbackValue) {
@@ -273,6 +276,11 @@ function collectModule(modulePath) {
 
 function collectGameModules() {
 	const gameModulePaths = walkLuaFiles(selectedGameRootPath).filter((gameModulePath) => {
+		if (releaseBuild && releaseIgnoredGameFileSet.has(gameModulePath)) {
+			log(`ignore release file ${gameModulePath}`);
+			return false;
+		}
+
 		return !ignoredGameFileSet.has(gameModulePath);
 	});
 
@@ -325,18 +333,26 @@ local function attribute()
 \treturn nil
 end
 
-globalEnvironment["LPH_ATTRIBUTES"] = globalEnvironment["LPH_ATTRIBUTES"] or attribute
-globalEnvironment["VM"] = globalEnvironment["VM"] or attribute
-globalEnvironment["PRESET"] = globalEnvironment["PRESET"] or attribute
-globalEnvironment["NONE"] = globalEnvironment["NONE"] or attribute
-globalEnvironment["FAST"] = globalEnvironment["FAST"] or attribute
-globalEnvironment["YHUB_NO_VIRTUALIZE"] = globalEnvironment["YHUB_NO_VIRTUALIZE"] or identity
-baseEnvironment["LPH_ATTRIBUTES"] = baseEnvironment["LPH_ATTRIBUTES"] or globalEnvironment["LPH_ATTRIBUTES"]
-baseEnvironment["VM"] = baseEnvironment["VM"] or globalEnvironment["VM"]
-baseEnvironment["PRESET"] = baseEnvironment["PRESET"] or globalEnvironment["PRESET"]
-baseEnvironment["NONE"] = baseEnvironment["NONE"] or globalEnvironment["NONE"]
-baseEnvironment["FAST"] = baseEnvironment["FAST"] or globalEnvironment["FAST"]
-baseEnvironment["YHUB_NO_VIRTUALIZE"] = baseEnvironment["YHUB_NO_VIRTUALIZE"] or globalEnvironment["YHUB_NO_VIRTUALIZE"]
+local function ensureFunction(environment, name, fallback)
+\tif type(environment[name]) ~= "function" then
+\t\tenvironment[name] = fallback
+\tend
+
+\treturn environment[name]
+end
+
+ensureFunction(globalEnvironment, "LPH_ATTRIBUTES", attribute)
+ensureFunction(globalEnvironment, "VM", attribute)
+ensureFunction(globalEnvironment, "PRESET", attribute)
+ensureFunction(globalEnvironment, "NONE", attribute)
+ensureFunction(globalEnvironment, "FAST", attribute)
+ensureFunction(globalEnvironment, "YHUB_NO_VIRTUALIZE", identity)
+ensureFunction(baseEnvironment, "LPH_ATTRIBUTES", globalEnvironment["LPH_ATTRIBUTES"])
+ensureFunction(baseEnvironment, "VM", globalEnvironment["VM"])
+ensureFunction(baseEnvironment, "PRESET", globalEnvironment["PRESET"])
+ensureFunction(baseEnvironment, "NONE", globalEnvironment["NONE"])
+ensureFunction(baseEnvironment, "FAST", globalEnvironment["FAST"])
+ensureFunction(baseEnvironment, "YHUB_NO_VIRTUALIZE", globalEnvironment["YHUB_NO_VIRTUALIZE"])
 
 local parentFramework = Framework or globalEnvironment.YHubFramework or globalEnvironment.YCoreFramework
 local externalLoaderConfig = globalEnvironment.YHubLoaderConfig or globalEnvironment.YCoreLoaderConfig or {}
