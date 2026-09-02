@@ -441,7 +441,6 @@ ensureFunction(baseEnvironment, "PRESET", globalEnvironment["PRESET"])
 ensureFunction(baseEnvironment, "NONE", globalEnvironment["NONE"])
 ensureFunction(baseEnvironment, "FAST", globalEnvironment["FAST"])
 baseEnvironment["YHUB_NO_VIRTUALIZE"] = globalEnvironment["YHUB_NO_VIRTUALIZE"]
-installNewcclosureCompatibility()
 
 local parentFramework = Framework or globalEnvironment.YHubFramework or globalEnvironment.YCoreFramework
 local externalLoaderConfig = globalEnvironment.YHubLoaderConfig or globalEnvironment.YCoreLoaderConfig or {}
@@ -492,9 +491,29 @@ end
 
 local detectedExecutorName = getExecutorName()
 
+local function isPotassiumExecutor()
+\treturn string.find(string.lower(detectedExecutorName), "potassium", 1, true) ~= nil
+end
+
+local function shouldInstallNewcclosureCompatibility()
+\tif loaderConfig.DisableNewcclosureCompat == true then
+\t\treturn false, "disabled-config"
+\tend
+
+\tif loaderConfig.EnableNewcclosureCompat == true then
+\t\treturn true, "enabled-config"
+\tend
+
+\tif isPotassiumExecutor() then
+\t\treturn false, "potassium"
+\tend
+
+\treturn true, "default"
+end
+
 local function bootstrapTraceEnabled()
 \treturn releaseDiagnosticsEnabled()
-\t\tor string.find(string.lower(detectedExecutorName), "potassium", 1, true) ~= nil
+\t\tor isPotassiumExecutor()
 end
 
 local function writeBootstrapTrace(stage, detail)
@@ -535,6 +554,13 @@ local function trace(stage, detail)
 \t\tglobalEnvironment.YHubLastBootstrapDetail = tostring(detail)
 \tend
 \twriteBootstrapTrace(stage, detail)
+end
+
+local installNewcclosureCompat, newcclosureCompatReason = shouldInstallNewcclosureCompatibility()
+trace("bundle-newcclosure-compat", (installNewcclosureCompat and "install:" or "skip:") .. tostring(newcclosureCompatReason))
+if installNewcclosureCompat then
+\tinstallNewcclosureCompatibility()
+\ttrace("bundle-newcclosure-compat-ready", newcclosureCompatReason)
 end
 
 local function notice(message)

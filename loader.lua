@@ -38,9 +38,13 @@ end
 
 local detectedExecutorName = getExecutorName()
 
+local function isPotassiumExecutor()
+	return string.find(string.lower(detectedExecutorName), "potassium", 1, true) ~= nil
+end
+
 local function bootstrapTraceEnabled()
 	return releaseDiagnosticsEnabled()
-		or string.find(string.lower(detectedExecutorName), "potassium", 1, true) ~= nil
+		or isPotassiumExecutor()
 end
 
 local function writeBootstrapTrace(stage, detail)
@@ -132,6 +136,22 @@ local function ensureFunction(environment, name, fallback)
 	return environment[name]
 end
 
+local function shouldInstallNewcclosureCompatibility()
+	if loaderConfig.DisableNewcclosureCompat == true then
+		return false, "disabled-config"
+	end
+
+	if loaderConfig.EnableNewcclosureCompat == true then
+		return true, "enabled-config"
+	end
+
+	if isPotassiumExecutor() then
+		return false, "potassium"
+	end
+
+	return true, "default"
+end
+
 local function installNewcclosureCompatibility()
 	local key = "__YHubNewcclosureCompat"
 	local state = rawget(globalEnvironment, key) or rawget(baseEnvironment, key)
@@ -183,7 +203,13 @@ ensureFunction(baseEnvironment, "PRESET", globalEnvironment["PRESET"])
 ensureFunction(baseEnvironment, "NONE", globalEnvironment["NONE"])
 ensureFunction(baseEnvironment, "FAST", globalEnvironment["FAST"])
 baseEnvironment["YHUB_NO_VIRTUALIZE"] = globalEnvironment["YHUB_NO_VIRTUALIZE"]
-installNewcclosureCompatibility()
+
+local installNewcclosureCompat, newcclosureCompatReason = shouldInstallNewcclosureCompatibility()
+trace("newcclosure-compat", (installNewcclosureCompat and "install:" or "skip:") .. tostring(newcclosureCompatReason))
+if installNewcclosureCompat then
+	installNewcclosureCompatibility()
+	trace("newcclosure-compat-ready", newcclosureCompatReason)
+end
 
 if baseUrl:sub(-1) ~= "/" then
 	baseUrl = baseUrl .. "/"
